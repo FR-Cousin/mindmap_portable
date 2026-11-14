@@ -1,0 +1,3042 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MindMap Portable</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f4f6f8;
+      --panel: #ffffff;
+      --text: #1d2733;
+      --muted: #667085;
+      --border: #d9e0e7;
+      --accent: #2457d6;
+      --accent-soft: #eaf0ff;
+      --danger: #c9362b;
+      --shadow: 0 10px 30px rgba(29, 39, 51, .10);
+      --radius: 12px;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+    body {
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      user-select: none;
+    }
+
+    button, input, textarea, select { font: inherit; }
+    button { color: inherit; }
+
+    .app {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-rows: auto auto minmax(0, 1fr) auto;
+      height: 100vh;
+      height: 100dvh;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      min-width: 0;
+      min-height: 58px;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(255,255,255,.94);
+      backdrop-filter: blur(12px);
+      z-index: 30;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 184px;
+      margin-right: 4px;
+    }
+
+    .brand-mark {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      background: var(--accent);
+      color: white;
+      font-weight: 800;
+      letter-spacing: -.04em;
+    }
+
+    .brand-title { font-size: 14px; font-weight: 750; line-height: 1.1; }
+    .brand-subtitle { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    .tool-group { display: flex; align-items: center; gap: 5px; }
+    .tool-separator { width: 1px; height: 28px; background: var(--border); margin: 0 3px; }
+
+    .tool-button {
+      height: 36px;
+      min-width: 36px;
+      border: 1px solid transparent;
+      border-radius: 9px;
+      background: transparent;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      padding: 0 10px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 650;
+      white-space: nowrap;
+    }
+
+    .tool-button:hover { background: #f0f3f7; }
+    .tool-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+    .tool-button.primary { background: var(--accent); color: white; }
+    .tool-button.primary:hover { filter: brightness(.96); }
+    .tool-button.active { background: var(--accent-soft); color: var(--accent); border-color: #bdccfa; }
+    .tool-button.danger:hover { color: var(--danger); background: #fff0ee; }
+    .tool-button:disabled { opacity: .42; cursor: default; background: transparent; }
+    .tool-button svg { width: 17px; height: 17px; stroke-width: 2; }
+
+    .toolbar-spacer { flex: 1; }
+    .zoom-value { min-width: 64px; text-align: center; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+    .workspace {
+      min-width: 0;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 286px;
+      position: relative;
+    }
+
+    .timeline { min-width: 0; background: #fff; border-bottom: 1px solid var(--border); padding: 8px 12px 0; }
+    .timeline-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+    .timeline-heading h2 { font-size: 13px; margin: 0; }
+    .timeline-hint { color: var(--muted); font-size: 11px; }
+    .timeline-heading button { white-space: nowrap; }
+    .timeline-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+    .timeline-zoom { display: flex; gap: 3px; align-items: center; }
+    .timeline-zoom .panel-button { min-width: 34px; padding: 5px 7px; }
+    #timelineZoomReset { width: 72px; padding-inline: 2px; font-size: 11px; font-variant-numeric: tabular-nums; }
+    /* Reserve a fixed height, including space for the horizontal scrollbar. */
+    .timeline-scroll { height: 116px; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; }
+    .timeline-track { --timeline-zoom: 1; display: flex; position: relative; width: max-content; min-width: 100%; height: 98px; margin: 0; padding: 4px 0 8px; list-style: none; }
+    .timeline-track::before { content: ''; position: absolute; left: 0; right: 0; top: 46px; height: 2px; background: #dbe4f4; }
+    .timeline-track li { position: relative; min-width: 0; flex: 0 0 var(--timeline-item-width, 188px); width: var(--timeline-item-width, 188px); scroll-snap-align: start; }
+    .timeline-scroll.unit-view { scroll-snap-type: x mandatory; }
+    .timeline-event { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: 28px 22px 30px; width: 100%; height: 100%; gap: 3px; padding: 0 min(20px, calc(10px * var(--timeline-zoom))); border: 0; background: transparent; text-align: left; cursor: pointer; border-radius: 7px; }
+    .timeline-event time { align-self: center; line-height: 1.2; color: var(--muted); font-size: clamp(9px, calc(11px * var(--timeline-zoom)), 22px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .timeline-event strong { align-self: center; line-height: 1.2; font-size: clamp(10px, calc(12px * var(--timeline-zoom)), 24px); font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .timeline-dot { align-self: center; width: min(20px, calc(10px * var(--timeline-zoom))); height: min(20px, calc(10px * var(--timeline-zoom))); border-radius: 50%; background: #869ac4; border: 0; box-shadow: 0 0 0 1px #869ac4; margin: 0; }
+    .timeline-event:hover, .timeline-event[aria-current="true"] { background: var(--accent-soft); }
+    .timeline-event[aria-current="true"] .timeline-dot { background: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+    .timeline-event:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+    .timeline-empty { align-self: flex-end; padding: 6px 0; color: var(--muted); font-size: 12px; }
+    .timeline-preview { position: fixed; z-index: 140; width: min(320px, calc(100vw - 24px)); max-height: min(380px, 65dvh); overflow: auto; padding: 14px; border: 1px solid var(--border); border-radius: 12px; background: white; box-shadow: var(--shadow); user-select: text; }
+    .timeline-preview[hidden] { display: none; }
+    .timeline-preview h3 { margin: 0 0 5px; font-size: 15px; overflow-wrap: anywhere; }
+    .timeline-preview time { display: block; color: var(--muted); font-size: 12px; margin-bottom: 10px; }
+    .timeline-preview img { width: 100%; max-height: 120px; object-fit: contain; margin-bottom: 8px; }
+    .timeline-preview-body { font-size: 13px; line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .node-event-heading { padding: 9px 15px 5px; border-bottom: 1px solid rgba(34,48,68,.10); pointer-events: none; }
+    .node-event-heading strong { display: block; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .node-event-heading time { display: block; font-size: 10px; color: var(--muted); margin-top: 3px; }
+    .event-fields { border-bottom: 1px solid var(--border); margin-bottom: 16px; padding-bottom: 14px; }
+    .event-fields h3 { font-size: 13px; margin: 0 0 12px; }
+    dialog.event-dialog { border: 1px solid var(--border); color: var(--text); max-height: 90dvh; overflow: auto; }
+    dialog.event-dialog::backdrop { background: rgba(21,31,43,.42); }
+    @media (max-width: 599px) { .timeline-hint { display: none; } }
+    @media (max-width: 1100px) { .timeline-hint { display: none; } }
+
+    .canvas-wrap {
+      position: relative;
+      min-width: 0;
+      overflow: hidden;
+      background-color: #f7f9fb;
+      cursor: grab;
+      touch-action: none;
+    }
+    .canvas-wrap.panning { cursor: grabbing; }
+    .canvas-wrap.connecting { cursor: crosshair; }
+    .canvas-wrap.selecting { cursor: crosshair; }
+
+    .selection-marquee {
+      position: absolute;
+      display: none;
+      border: 1.5px solid var(--accent);
+      border-radius: 6px;
+      background: rgba(36, 87, 214, .12);
+      box-shadow: 0 0 0 1px rgba(255,255,255,.55) inset;
+      pointer-events: none;
+      z-index: 24;
+    }
+    .selection-marquee.visible { display: block; }
+
+    .grid {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background-image: radial-gradient(circle, rgba(86,105,130,.24) 1px, transparent 1px);
+      background-size: 24px 24px;
+      transform-origin: 0 0;
+    }
+
+    .world {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .edges {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .edge-visible {
+      fill: none;
+      stroke: #94a3b8;
+      stroke-width: 2.25;
+      vector-effect: non-scaling-stroke;
+      pointer-events: none;
+    }
+    .edge-hit {
+      fill: none;
+      stroke: transparent;
+      stroke-width: 15;
+      vector-effect: non-scaling-stroke;
+      pointer-events: stroke;
+      cursor: pointer;
+    }
+    .edge-group.related .edge-visible { stroke: #6b89c5; stroke-width: 2.7; }
+    .edge-group.selected .edge-visible { stroke: var(--accent); stroke-width: 3.2; }
+    .edge-group.connect-preview .edge-visible { stroke: var(--accent); stroke-dasharray: 7 7; }
+    .edge-label-bg {
+      fill: rgba(255,255,255,.65);
+      stroke: none;
+      vector-effect: non-scaling-stroke;
+      pointer-events: none;
+    }
+    .edge-label-text {
+      fill: #475569;
+      font-size: 12px;
+      font-weight: 700;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      text-anchor: middle;
+      dominant-baseline: central;
+      pointer-events: none;
+      stroke: none;
+    }
+    .edge-group.related .edge-label-text { fill: #5273b2; }
+    .edge-group.selected .edge-label-text { fill: var(--accent); }
+
+    .nodes { position: absolute; left: 0; top: 0; }
+
+    .node {
+      position: absolute;
+      width: 210px;
+      min-height: 72px;
+      border: 1px solid rgba(34, 48, 68, .16);
+      border-radius: 14px;
+      background: var(--node-color, #ffffff);
+      box-shadow: 0 5px 16px rgba(25, 39, 58, .10);
+      overflow: visible;
+      cursor: move;
+      transform-origin: 0 0;
+      pointer-events: auto;
+    }
+    .node:hover { box-shadow: 0 8px 22px rgba(25, 39, 58, .14); }
+    .node-resize-handle {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      width: 24px;
+      height: 24px;
+      border: 0;
+      border-radius: 5px 0 13px 0;
+      background: linear-gradient(135deg, transparent 45%, #667085 46%, #667085 52%, transparent 53%, transparent 65%, #667085 66%, #667085 72%, transparent 73%);
+      background-size: 12px 12px;
+      background-position: center;
+      background-repeat: no-repeat;
+      cursor: nwse-resize;
+      touch-action: none;
+    }
+    .node.related {
+      outline: 2px solid rgba(36,87,214,.10);
+      border-color: rgba(36,87,214,.38);
+      box-shadow: 0 5px 18px rgba(36,87,214,.12);
+    }
+    .node.selected {
+      outline: 3px solid rgba(36,87,214,.28);
+      border-color: var(--accent);
+      box-shadow: 0 9px 28px rgba(36,87,214,.19);
+    }
+    .node.connect-source {
+      outline: 3px solid rgba(36,87,214,.34);
+      border-color: var(--accent);
+    }
+
+    .node-image {
+      display: block;
+      width: 100%;
+      height: auto;
+      object-fit: contain;
+      pointer-events: none;
+      background: #e7ebf0;
+      border-radius: 13px 13px 0 0;
+    }
+
+    .node-content {
+      min-height: 70px;
+      padding: 13px 15px;
+      font-size: 14px;
+      font-weight: 650;
+      line-height: 1.36;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      pointer-events: none;
+    }
+    .node-content.empty { color: #8a96a6; font-weight: 550; }
+    .node-content.editing { pointer-events: auto; user-select: text; cursor: text; outline: 2px solid var(--accent); border-radius: 12px; touch-action: auto; }
+    .node-content { font-weight: 400; }
+    .text-format-popup { position: fixed; z-index: 150; display: flex; gap: 4px; padding: 5px; background: white; border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow); }
+    .text-format-popup[hidden] { display: none; }
+    .text-format-popup button { width: 38px; height: 36px; border: 0; border-radius: 6px; background: #f0f3f7; cursor: pointer; }
+    .text-format-popup button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); outline: 1px solid var(--accent); }
+    .panel-text-formats { display: flex; gap: 6px; margin: 8px 0; }
+    .panel-text-formats button { flex: 1; }
+    .panel-text-formats button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+
+    .node-badge {
+      position: absolute;
+      right: 7px;
+      top: 7px;
+      width: 21px;
+      height: 21px;
+      border-radius: 7px;
+      display: none;
+      place-items: center;
+      background: rgba(255,255,255,.88);
+      border: 1px solid rgba(31,45,61,.14);
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 800;
+      pointer-events: none;
+    }
+    .node.connect-source .node-badge { display: grid; }
+
+    .branch-drag-handle {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: auto;
+      width: 27px;
+      height: 27px;
+      transform: translate(-42%, -42%);
+      border: 1px solid rgba(31,45,61,.16);
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      background: rgba(255,255,255,.90);
+      color: #526172;
+      cursor: grab;
+      padding: 0;
+      z-index: 6;
+      box-shadow: 0 3px 10px rgba(25,39,58,.16);
+    }
+    .branch-drag-handle:hover { background: var(--accent-soft); border-color: #aebff1; color: var(--accent); }
+    .branch-drag-handle:active { cursor: grabbing; }
+    .branch-drag-handle:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+    .branch-drag-handle svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.9; }
+
+    .branch-toggle {
+      position: absolute;
+      left: 50%;
+      bottom: 0;
+      transform: translate(-50%, 50%);
+      min-width: 25px;
+      height: 25px;
+      padding: 0 7px;
+      border: 1px solid rgba(31,45,61,.18);
+      border-radius: 8px;
+      background: rgba(255,255,255,.92);
+      color: var(--accent);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 800;
+      line-height: 1;
+      box-shadow: 0 2px 7px rgba(25,39,58,.10);
+    }
+    .branch-toggle:hover { background: var(--accent-soft); border-color: #aebff1; }
+    .branch-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+    .branch-toggle .branch-count { font-size: 10px; color: var(--muted); font-weight: 750; }
+
+    .empty-state {
+      position: absolute;
+      left: 50%;
+      top: 48%;
+      transform: translate(-50%, -50%);
+      width: min(430px, calc(100% - 40px));
+      text-align: center;
+      pointer-events: none;
+      color: var(--muted);
+    }
+    .empty-state.hidden { display: none; }
+    .empty-icon {
+      width: 62px;
+      height: 62px;
+      margin: 0 auto 14px;
+      border-radius: 18px;
+      display: grid;
+      place-items: center;
+      background: white;
+      box-shadow: var(--shadow);
+      color: var(--accent);
+    }
+    .empty-icon svg { width: 29px; height: 29px; }
+    .empty-title { font-size: 18px; color: var(--text); font-weight: 760; }
+    .empty-copy { font-size: 13px; line-height: 1.5; margin-top: 6px; }
+
+    .inspector {
+      min-width: 0;
+      min-height: 0;
+      border-left: 1px solid var(--border);
+      background: var(--panel);
+      padding: 17px;
+      overflow-y: auto;
+      z-index: 20;
+    }
+    .inspector-header { margin-bottom: 16px; }
+    .inspector-title { font-size: 14px; font-weight: 760; }
+    .inspector-subtitle { font-size: 12px; color: var(--muted); margin-top: 3px; line-height: 1.4; }
+
+    .field { margin-bottom: 15px; }
+    .field-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #465467;
+    }
+    .field-hint { color: var(--muted); font-weight: 500; font-size: 11px; }
+
+    textarea, select, input[type="number"], input[type="datetime-local"], .event-title-input, #edgeLabel {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      background: white;
+      color: var(--text);
+      padding: 9px 10px;
+      outline: none;
+    }
+    textarea { min-height: 128px; resize: vertical; line-height: 1.45; user-select: text; }
+    textarea:focus, select:focus, input[type="number"]:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(36,87,214,.11); }
+
+    .color-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 7px; }
+    .color-swatch {
+      aspect-ratio: 1;
+      border-radius: 9px;
+      border: 2px solid transparent;
+      cursor: pointer;
+      box-shadow: inset 0 0 0 1px rgba(24,35,49,.12);
+    }
+    .color-swatch.selected { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(36,87,214,.16); }
+
+    .image-preview {
+      width: 100%;
+      min-height: 104px;
+      border: 1px dashed #bcc6d3;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      background: #f8fafc;
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+      padding: 10px;
+    }
+    .image-preview img { display: block; width: 100%; height: auto; object-fit: contain; border-radius: 7px; }
+    .image-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: 7px; }
+
+    .panel-button {
+      min-height: 36px;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      background: white;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 7px 9px;
+    }
+    .panel-button:hover { background: #f5f7fa; }
+    .panel-button.primary { border-color: var(--accent); background: var(--accent); color: white; }
+    .panel-button.danger { color: var(--danger); }
+    .panel-button:disabled { opacity: .45; cursor: default; }
+
+    .inspector-empty {
+      margin-top: 42px;
+      padding: 18px 12px;
+      border: 1px dashed var(--border);
+      border-radius: 12px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .shortcuts {
+      margin-top: 23px;
+      padding-top: 17px;
+      border-top: 1px solid var(--border);
+    }
+    .shortcuts-title { font-size: 12px; font-weight: 750; margin-bottom: 9px; }
+    .shortcut-row { display: flex; justify-content: space-between; gap: 10px; color: var(--muted); font-size: 11px; margin: 6px 0; }
+    kbd {
+      border: 1px solid var(--border);
+      border-bottom-width: 2px;
+      background: #f8fafc;
+      border-radius: 5px;
+      padding: 1px 5px;
+      color: #465467;
+      font-family: inherit;
+      white-space: nowrap;
+    }
+
+    .statusbar {
+      display: flex;
+      flex-wrap: wrap;
+      min-width: 0;
+      min-height: 28px;
+      align-items: center;
+      gap: 14px;
+      padding: 0 12px;
+      border-top: 1px solid var(--border);
+      background: #ffffff;
+      color: var(--muted);
+      font-size: 11px;
+      z-index: 30;
+    }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: #1d9b61; }
+    .status-spacer { flex: 1; }
+
+    .toast-stack {
+      position: fixed;
+      right: 306px;
+      bottom: 42px;
+      display: grid;
+      gap: 8px;
+      z-index: 100;
+      pointer-events: none;
+    }
+    .toast {
+      min-width: 220px;
+      max-width: 340px;
+      padding: 10px 12px;
+      background: #1d2733;
+      color: white;
+      border-radius: 9px;
+      box-shadow: var(--shadow);
+      font-size: 12px;
+      animation: toast-in .18s ease-out;
+    }
+    @keyframes toast-in { from { opacity: 0; transform: translateY(5px); } }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(21,31,43,.42);
+      z-index: 200;
+      padding: 20px;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal {
+      width: min(430px, 100%);
+      background: white;
+      border-radius: 14px;
+      box-shadow: 0 30px 80px rgba(15,23,42,.28);
+      padding: 20px;
+    }
+    .modal h2 { margin: 0; font-size: 18px; }
+    .modal p { color: var(--muted); font-size: 13px; line-height: 1.5; margin: 8px 0 18px; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+    .sr-only {
+      position: absolute !important;
+      width: 1px !important;
+      height: 1px !important;
+      padding: 0 !important;
+      margin: -1px !important;
+      overflow: hidden !important;
+      clip: rect(0, 0, 0, 0) !important;
+      white-space: nowrap !important;
+      border: 0 !important;
+    }
+
+    #inspectorToggle { display: none; }
+
+    @media (max-width: 880px) {
+      .desktop-label { display: none; }
+      .brand { min-width: auto; }
+      .brand-copy { display: none; }
+    }
+
+    @media (max-width: 599px) {
+      .workspace { grid-template-columns: minmax(0, 1fr); overflow: hidden; }
+      .toolbar { gap: 6px; }
+      .tool-separator, .toolbar-spacer { display: none; }
+      #inspectorToggle { display: inline-flex; }
+      .statusbar { gap: 4px 10px; padding: 4px 12px; }
+      .inspector {
+        position: absolute;
+        right: 10px;
+        top: 10px;
+        bottom: 10px;
+        width: min(286px, calc(100% - 20px));
+        border: 1px solid var(--border);
+        border-radius: 13px;
+        box-shadow: var(--shadow);
+        transform: translateX(calc(100% + 20px));
+        visibility: hidden;
+        transition: transform .2s ease, visibility .2s;
+      }
+      .inspector.mobile-open { transform: translateX(0); visibility: visible; }
+      .toast-stack { right: 12px; }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <header class="toolbar" aria-label="Barre d’outils">
+    <div class="brand">
+      <div class="brand-mark">M</div>
+      <div class="brand-copy">
+        <div class="brand-title">MindMap Portable</div>
+        <div class="brand-subtitle">Local · hors ligne</div>
+      </div>
+    </div>
+
+    <div class="tool-group">
+      <button class="tool-button primary" id="addNodeBtn" title="Ajouter une étiquette (N)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 5v14M5 12h14"/></svg>
+        <span class="desktop-label">Étiquette</span>
+      </button>
+      <button class="tool-button" id="addChildBtn" title="Ajouter une étiquette enfant (Ctrl+Entrée)" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 4v7a3 3 0 0 0 3 3h9"/><path d="m15 11 3 3-3 3"/></svg>
+        <span class="desktop-label">Enfant</span>
+      </button>
+      <button class="tool-button" id="connectBtn" title="Relier deux étiquettes (R)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8 8l8 8"/></svg>
+        <span class="desktop-label">Relier</span>
+      </button>
+      <button class="tool-button danger" id="deleteBtn" title="Supprimer la sélection (Suppr)" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 10v6M14 10v6"/></svg>
+      </button>
+    </div>
+
+    <div class="tool-separator"></div>
+
+    <div class="tool-group">
+      <button class="tool-button" id="undoBtn" title="Annuler (Ctrl+Z)" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 7 4 12l5 5"/><path d="M4 12h9a7 7 0 0 1 7 7"/></svg>
+      </button>
+      <button class="tool-button" id="redoBtn" title="Rétablir (Ctrl+Y)" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m15 7 5 5-5 5"/><path d="M20 12h-9a7 7 0 0 0-7 7"/></svg>
+      </button>
+    </div>
+
+    <div class="tool-separator"></div>
+
+    <div class="tool-group">
+      <button class="tool-button" id="newBtn" title="Nouvelle carte">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 3h10l4 4v14H5z"/><path d="M15 3v5h5"/></svg>
+        <span class="desktop-label">Nouveau</span>
+      </button>
+      <button class="tool-button" id="importBtn" title="Ouvrir un fichier .mindmap.json">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 19h16V8l-5-5H4z"/><path d="M14 3v6h6M12 12v6M9 15l3 3 3-3"/></svg>
+        <span class="desktop-label">Ouvrir</span>
+      </button>
+      <button class="tool-button" id="exportBtn" title="Enregistrer la carte (Ctrl+S)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 3h12l2 2v16H5z"/><path d="M8 3v6h8V3M8 21v-7h8v7"/></svg>
+        <span class="desktop-label">Enregistrer</span>
+      </button>
+      <button class="tool-button" id="pngBtn" title="Exporter la carte en PNG">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 5h16v14H4z"/><circle cx="9" cy="10" r="2"/><path d="m4 16 4-4 4 4 3-3 5 5"/></svg>
+        <span class="desktop-label">PNG</span>
+      </button>
+    </div>
+
+    <div class="toolbar-spacer"></div>
+
+    <div class="tool-group">
+      <button class="tool-button" id="fitBtn" title="Cadrer toute la carte (F)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/></svg>
+      </button>
+      <button class="tool-button" id="zoomOutBtn" title="Dézoomer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="7"/><path d="m16 16 5 5M8 11h6"/></svg>
+      </button>
+      <button type="button" class="tool-button zoom-value" id="zoomValue" title="Revenir à 100 % au centre de la vue" aria-label="Revenir au zoom de 100 %">100 %</button>
+      <button class="tool-button" id="zoomInBtn" title="Zoomer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="7"/><path d="m16 16 5 5M11 8v6M8 11h6"/></svg>
+      </button>
+      <button class="tool-button" id="inspectorToggle" title="Afficher les propriétés" aria-controls="inspector" aria-expanded="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 5h16M4 12h16M4 19h16"/><circle cx="9" cy="5" r="2" fill="white"/><circle cx="15" cy="12" r="2" fill="white"/><circle cx="11" cy="19" r="2" fill="white"/></svg>
+        <span>Propriétés</span>
+      </button>
+    </div>
+  </header>
+
+  <section class="timeline" aria-label="Frise chronologique">
+    <div class="timeline-heading">
+      <h2>Chronologie <span id="timelineCount"></span></h2>
+      <span class="timeline-hint">Ordre chronologique · Survolez pour un aperçu, cliquez pour retrouver l’étiquette</span>
+      <div class="timeline-actions">
+        <div class="timeline-zoom" role="group" aria-label="Zoom de la chronologie">
+          <button type="button" class="panel-button" id="timelineZoomOut" aria-label="Dézoomer la chronologie" title="Dézoomer la frise">−</button>
+          <button type="button" class="panel-button" id="timelineZoomReset" title="Tout voir · Molette sur la frise pour zoomer" aria-label="Zoom de la chronologie : 100 %. Afficher tous les événements">100 %</button>
+          <button type="button" class="panel-button" id="timelineZoomIn" aria-label="Zoomer la chronologie" title="Zoomer la frise">+</button>
+        </div>
+        <button type="button" class="panel-button" id="addEventBtn">+ Événement</button>
+      </div>
+    </div>
+    <div class="timeline-scroll" id="timelineScroll" tabindex="0" aria-label="Événements : molette ou touches + et − pour zoomer, 0 pour tout voir">
+      <ol class="timeline-track" id="timelineTrack" aria-label="Événements dans l’ordre chronologique"></ol>
+    </div>
+  </section>
+
+  <main class="workspace">
+    <section class="canvas-wrap" id="canvasWrap" aria-label="Zone de carte mentale">
+      <div class="grid" id="grid"></div>
+      <div class="world" id="world">
+        <svg class="edges" id="edgesSvg" aria-hidden="true"></svg>
+        <div class="nodes" id="nodesLayer"></div>
+      </div>
+      <div class="selection-marquee" id="selectionMarquee"></div>
+      <div class="empty-state" id="emptyState">
+        <div class="empty-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><circle cx="4" cy="7" r="2"/><circle cx="20" cy="7" r="2"/><circle cx="4" cy="18" r="2"/><circle cx="20" cy="18" r="2"/><path d="m6 8 3.5 2.5M18 8l-3.5 2.5M6 17l3.5-3M18 17l-3.5-3"/></svg>
+        </div>
+        <div class="empty-title">Créez votre première idée</div>
+        <div class="empty-copy">Double-cliquez dans la zone ou utilisez le bouton « Étiquette ».<br>Glissez pour déplacer la carte, utilisez la molette pour zoomer.</div>
+      </div>
+    </section>
+
+    <aside class="inspector" id="inspector" aria-label="Propriétés">
+      <div class="inspector-header">
+        <div class="inspector-title" id="inspectorTitle">Propriétés</div>
+        <div class="inspector-subtitle" id="inspectorSubtitle">Sélectionnez une étiquette pour la modifier.</div>
+      </div>
+
+      <div id="nodeInspector" hidden>
+        <div class="event-fields">
+          <h3>Événement sur la frise</h3>
+          <div class="field">
+            <label class="field-label" for="nodeEventTitle">Titre de l’événement</label>
+            <input class="event-title-input" id="nodeEventTitle" type="text" maxlength="160" placeholder="Ex. Premier rendez-vous" />
+          </div>
+          <div class="field">
+            <label class="field-label" for="nodeEventAt">Date et heure</label>
+            <input id="nodeEventAt" type="datetime-local" min="0001-01-01T00:00" max="9999-12-31T23:59" step="60" />
+            <p class="field-hint">Le titre et la date ajoutent automatiquement l’étiquette à la frise. Heure locale, conservée telle que saisie.</p>
+          </div>
+          <button type="button" class="panel-button" id="removeEventBtn">Retirer de la frise</button>
+        </div>
+        <div class="field">
+          <label class="field-label" for="nodeText">Texte <span class="field-hint">Ctrl+Entrée : enfant</span></label>
+          <textarea id="nodeText" placeholder="Écrivez votre idée…"></textarea>
+        </div>
+
+        <div class="field">
+          <div class="field-label">Format du texte</div>
+          <div class="panel-text-formats" id="panelTextFormats" role="group" aria-label="Format du texte">
+            <button type="button" class="panel-button" data-format="bold" title="Gras" aria-label="Gras" aria-pressed="false"><b>G</b></button>
+            <button type="button" class="panel-button" data-format="italic" title="Italique" aria-label="Italique" aria-pressed="false"><i>I</i></button>
+            <button type="button" class="panel-button" data-format="underline" title="Souligné" aria-label="Souligné" aria-pressed="false"><u>S</u></button>
+            <button type="button" class="panel-button" data-format="highlight" title="Surlignage" aria-label="Surlignage" aria-pressed="false"><mark>A</mark></button>
+          </div>
+          <p class="field-hint" id="panelTextScope">Appliquer à tout le texte.</p>
+          <label class="field-label" for="nodeFontSize">Taille du texte de l’étiquette</label>
+          <select id="nodeFontSize">
+            <option value="12">Petite — 12 px</option>
+            <option value="14">Normale — 14 px</option>
+            <option value="16">Moyenne — 16 px</option>
+            <option value="18">Grande — 18 px</option>
+            <option value="20">Très grande — 20 px</option>
+            <option value="24">24 px</option>
+            <option value="28">28 px</option>
+            <option value="32">32 px</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <div class="field-label">Image <span class="field-hint">JPG, PNG, WebP</span></div>
+          <div class="image-preview" id="imagePreview">Aucune image</div>
+          <div class="image-actions">
+            <button class="panel-button" id="chooseImageBtn">Choisir</button>
+            <button class="panel-button danger" id="removeImageBtn" disabled>Retirer</button>
+          </div>
+          <input type="file" id="imageInput" accept="image/*" class="sr-only" />
+        </div>
+
+        <div class="field">
+          <div class="field-label">Couleur</div>
+          <div class="color-row" id="colorRow"></div>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="nodeSize">Largeur</label>
+          <select id="nodeSize">
+            <option value="custom" disabled>Personnalisée (poignée)</option>
+            <option value="170">Petite</option>
+            <option value="210">Moyenne</option>
+            <option value="270">Grande</option>
+            <option value="340">Très grande</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <button class="panel-button primary" id="panelAddChildBtn" style="width:100%">Ajouter une étiquette enfant</button>
+        </div>
+      </div>
+
+      <div id="edgeInspector" hidden>
+        <div class="field">
+          <label class="field-label" for="edgeLabel">Nom de la liaison</label>
+          <input id="edgeLabel" type="text" maxlength="200" placeholder="Ex. entraîne, dépend de, contient…" />
+        </div>
+        <div class="inspector-empty">Le nom apparaît directement au milieu de la liaison. Utilisez <kbd>Suppr</kbd> pour retirer la liaison.</div>
+      </div>
+
+      <div id="nothingInspector">
+        <div class="inspector-empty">Sélectionnez une étiquette pour modifier son texte, son image, sa couleur et sa largeur.</div>
+      </div>
+
+      <div class="shortcuts">
+        <div class="shortcuts-title">Raccourcis</div>
+        <div class="shortcut-row"><span>Nouvelle étiquette</span><kbd>N</kbd></div>
+        <div class="shortcut-row"><span>Relier</span><kbd>R</kbd></div>
+        <div class="shortcut-row"><span>Enfant</span><kbd>Ctrl + Entrée</kbd></div>
+        <div class="shortcut-row"><span>Sélection multiple</span><kbd>Maj + clic</kbd></div>
+        <div class="shortcut-row" title="Sélectionner l’étiquette et ses voisines directement reliées, dans les deux sens, puis glisser pour déplacer le groupe."><span>Voisines directes</span><kbd>Ctrl + Alt + clic</kbd></div>
+        <div class="shortcut-row"><span>Zone de sélection</span><kbd>Maj + glisser</kbd></div>
+        <div class="shortcut-row"><span>Déplacer une branche</span><kbd>Alt + glisser</kbd></div>
+        <div class="shortcut-row"><span>Supprimer</span><kbd>Suppr</kbd></div>
+        <div class="shortcut-row"><span>Enregistrer</span><kbd>Ctrl + S</kbd></div>
+        <div class="shortcut-row"><span>Annuler / rétablir</span><kbd>Ctrl + Z / Y</kbd></div>
+      </div>
+    </aside>
+  </main>
+
+  <footer class="statusbar">
+    <span class="status-dot"></span>
+    <span id="saveStatus">Sauvegarde locale active</span>
+    <span id="modeStatus">Mode déplacement</span>
+    <span class="status-spacer"></span>
+    <span id="countStatus">0 étiquette · 0 liaison</span>
+  </footer>
+</div>
+
+<div class="toast-stack" id="toastStack"></div>
+<div class="timeline-preview" id="timelinePreview" role="tooltip" hidden></div>
+<dialog class="modal event-dialog" id="eventDialog" aria-labelledby="eventDialogTitle">
+  <form id="eventForm">
+    <h2 id="eventDialogTitle">Nouvel événement</h2>
+    <p>Crée une étiquette reliée à la chronologie.</p>
+    <div class="field">
+      <label class="field-label" for="eventTitle">Titre</label>
+      <input class="event-title-input" id="eventTitle" type="text" maxlength="160" required autofocus />
+    </div>
+    <div class="field">
+      <label class="field-label" for="eventAt">Date et heure</label>
+      <input id="eventAt" type="datetime-local" min="0001-01-01T00:00" max="9999-12-31T23:59" step="60" required />
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="panel-button" id="cancelEventBtn">Annuler</button>
+      <button type="submit" class="panel-button primary">Créer l’événement</button>
+    </div>
+  </form>
+</dialog>
+<div class="text-format-popup" id="textFormatPopup" role="toolbar" aria-label="Mise en forme du texte" hidden>
+  <button type="button" data-format="bold" title="Gras (Ctrl+B)" aria-label="Gras" aria-pressed="false"><b>G</b></button>
+  <button type="button" data-format="italic" title="Italique (Ctrl+I)" aria-label="Italique" aria-pressed="false"><i>I</i></button>
+  <button type="button" data-format="underline" title="Souligné (Ctrl+U)" aria-label="Souligné" aria-pressed="false"><u>S</u></button>
+  <button type="button" data-format="highlight" title="Surligner" aria-label="Surligner" aria-pressed="false"><mark>A</mark></button>
+</div>
+
+<div class="modal-backdrop" id="newModal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="newModalTitle">
+    <h2 id="newModalTitle">Créer une nouvelle carte ?</h2>
+    <p>La carte actuelle reste enregistrée localement, mais sera remplacée dans l’application. Exportez-la avant si vous souhaitez la conserver sous forme de fichier.</p>
+    <div class="modal-actions">
+      <button class="panel-button" id="cancelNewBtn">Annuler</button>
+      <button class="panel-button danger" id="confirmNewBtn">Nouvelle carte</button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="importInput" accept=".json,.mindmap.json,application/json" class="sr-only" />
+
+<script>
+(() => {
+  'use strict';
+
+  const STORAGE_KEY = 'mindmap-portable-v1';
+  const NODE_COLORS = ['#ffffff', '#eaf0ff', '#e9f8ef', '#fff4d9', '#ffe9e7', '#f3ebff', '#e8f7fa', '#f3f4f6', '#fff0f6', '#ecf8df'];
+  // Numerical safety only: the canvas has no fixed world dimensions.
+  const MIN_ZOOM = 1e-12;
+  const MAX_ZOOM = 2.5;
+  const HISTORY_LIMIT = 80;
+
+  const el = {
+    canvas: document.getElementById('canvasWrap'),
+    world: document.getElementById('world'),
+    grid: document.getElementById('grid'),
+    nodes: document.getElementById('nodesLayer'),
+    edges: document.getElementById('edgesSvg'),
+    empty: document.getElementById('emptyState'),
+    selectionMarquee: document.getElementById('selectionMarquee'),
+    inspector: document.getElementById('inspector'),
+    nodeInspector: document.getElementById('nodeInspector'),
+    edgeInspector: document.getElementById('edgeInspector'),
+    edgeLabel: document.getElementById('edgeLabel'),
+    nothingInspector: document.getElementById('nothingInspector'),
+    inspectorTitle: document.getElementById('inspectorTitle'),
+    inspectorSubtitle: document.getElementById('inspectorSubtitle'),
+    nodeText: document.getElementById('nodeText'),
+    nodeFontSize: document.getElementById('nodeFontSize'),
+    panelTextFormats: document.getElementById('panelTextFormats'),
+    panelTextScope: document.getElementById('panelTextScope'),
+    imagePreview: document.getElementById('imagePreview'),
+    imageInput: document.getElementById('imageInput'),
+    colorRow: document.getElementById('colorRow'),
+    nodeSize: document.getElementById('nodeSize'),
+    nodeEventTitle: document.getElementById('nodeEventTitle'),
+    nodeEventAt: document.getElementById('nodeEventAt'),
+    removeEventBtn: document.getElementById('removeEventBtn'),
+    timelineTrack: document.getElementById('timelineTrack'),
+    timelineScroll: document.getElementById('timelineScroll'),
+    timelineZoomOut: document.getElementById('timelineZoomOut'),
+    timelineZoomIn: document.getElementById('timelineZoomIn'),
+    timelineZoomReset: document.getElementById('timelineZoomReset'),
+    timelineCount: document.getElementById('timelineCount'),
+    timelinePreview: document.getElementById('timelinePreview'),
+    eventDialog: document.getElementById('eventDialog'),
+    addNodeBtn: document.getElementById('addNodeBtn'),
+    addChildBtn: document.getElementById('addChildBtn'),
+    connectBtn: document.getElementById('connectBtn'),
+    deleteBtn: document.getElementById('deleteBtn'),
+    undoBtn: document.getElementById('undoBtn'),
+    redoBtn: document.getElementById('redoBtn'),
+    newBtn: document.getElementById('newBtn'),
+    importBtn: document.getElementById('importBtn'),
+    exportBtn: document.getElementById('exportBtn'),
+    pngBtn: document.getElementById('pngBtn'),
+    fitBtn: document.getElementById('fitBtn'),
+    zoomInBtn: document.getElementById('zoomInBtn'),
+    zoomOutBtn: document.getElementById('zoomOutBtn'),
+    zoomValue: document.getElementById('zoomValue'),
+    inspectorToggle: document.getElementById('inspectorToggle'),
+    chooseImageBtn: document.getElementById('chooseImageBtn'),
+    removeImageBtn: document.getElementById('removeImageBtn'),
+    panelAddChildBtn: document.getElementById('panelAddChildBtn'),
+    importInput: document.getElementById('importInput'),
+    saveStatus: document.getElementById('saveStatus'),
+    modeStatus: document.getElementById('modeStatus'),
+    countStatus: document.getElementById('countStatus'),
+    toastStack: document.getElementById('toastStack'),
+    newModal: document.getElementById('newModal'),
+    cancelNewBtn: document.getElementById('cancelNewBtn'),
+    confirmNewBtn: document.getElementById('confirmNewBtn')
+  };
+
+  let state = createEmptyState();
+  let selected = null;
+  let selectedNodeIds = new Set();
+  let connectMode = false;
+  let connectSourceId = null;
+  let previewPoint = null;
+  let interaction = null;
+  let history = [];
+  let future = [];
+  let saveTimer = null;
+  let textHistoryTimer = null;
+  let eventHistoryTimer = null;
+  let eventHistoryNodeId = null;
+  let previewHideTimer = null;
+  let previewTrigger = null;
+  let timelineItemWidth = 0;
+  let timelineViewportWidth = 0;
+
+  function createEmptyState() {
+    return {
+      version: 1,
+      title: 'Ma carte mentale',
+      nodes: [],
+      edges: [],
+      view: { x: 0, y: 0, scale: 1 },
+      timelineZoom: 1,
+      timelineZoomMode: 'fit',
+      updatedAt: new Date().toISOString()
+    };
+  }
+
+  function uid(prefix) {
+    return prefix + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  }
+
+  function cloneData(value) {
+    return JSON.parse(JSON.stringify(value));
+  }
+
+  function snapshot() {
+    return cloneData({ nodes: state.nodes, edges: state.edges, view: state.view, timelineZoom: state.timelineZoom });
+  }
+
+  function pushHistory() {
+    clearTimeout(eventHistoryTimer); eventHistoryTimer = null;
+    history.push(snapshot());
+    if (history.length > HISTORY_LIMIT) history.shift();
+    future = [];
+    updateButtons();
+  }
+
+  function restoreSnapshot(snap) {
+    clearTimeout(eventHistoryTimer); eventHistoryTimer = null;
+    clearTimeout(textHistoryTimer); textHistoryTimer = null;
+    formatPopup.hidden = true; textSelection = null;
+    state.nodes = cloneData(snap.nodes || []);
+    state.edges = cloneData(snap.edges || []);
+    state.view = cloneData(snap.view || { x: 0, y: 0, scale: 1 });
+    state.timelineZoom = normalizeTimelineZoom(snap.timelineZoom);
+    selected = null;
+    selectedNodeIds.clear();
+    stopConnectMode();
+    renderAll();
+    scheduleSave();
+  }
+
+  function undo() {
+    if (!history.length) return;
+    future.push(snapshot());
+    const snap = history.pop();
+    restoreSnapshot(snap);
+  }
+
+  function redo() {
+    if (!future.length) return;
+    history.push(snapshot());
+    const snap = future.pop();
+    restoreSnapshot(snap);
+  }
+
+  function sanitizeImported(data) {
+    if (!data || typeof data !== 'object') throw new Error('Fichier non valide.');
+    const nodes = Array.isArray(data.nodes) ? data.nodes : [];
+    const edges = Array.isArray(data.edges) ? data.edges : [];
+    const safeNodes = nodes.map((n, index) => ({
+      id: typeof n.id === 'string' ? n.id : uid('node'),
+      x: Number.isFinite(Number(n.x)) ? Number(n.x) : index * 30,
+      y: Number.isFinite(Number(n.y)) ? Number(n.y) : index * 30,
+      width: Number.isFinite(Number(n.width)) ? clamp(Number(n.width), 120, 1200) : 210,
+      height: Number.isFinite(Number(n.height)) && Number(n.height) > 0 ? clamp(Number(n.height), 72, 2000) : null,
+      text: typeof n.text === 'string' ? n.text.slice(0, 10000) : '',
+      fontSize: normalizeFontSize(n.fontSize),
+      eventTitle: typeof n.eventTitle === 'string' ? n.eventTitle.trim().slice(0, 160) : '',
+      eventAt: normalizeEventAt(n.eventAt),
+      richText: sanitizeRichText(n.richText, typeof n.text === 'string' ? n.text.slice(0, 10000) : ''),
+      image: typeof n.image === 'string' && n.image.startsWith('data:image/') ? n.image : '',
+      color: NODE_COLORS.includes(n.color) ? n.color : '#ffffff',
+      collapsed: Boolean(n.collapsed)
+    }));
+    const ids = new Set(safeNodes.map(n => n.id));
+    const safeEdges = edges
+      .filter(e => ids.has(e.source) && ids.has(e.target) && e.source !== e.target)
+      .map(e => ({
+        id: typeof e.id === 'string' ? e.id : uid('edge'),
+        source: e.source,
+        target: e.target,
+        label: typeof e.label === 'string' ? e.label.slice(0, 200) : ''
+      }));
+    const view = data.view || {};
+    return {
+      version: 1,
+      title: typeof data.title === 'string' ? data.title.slice(0, 200) : 'Ma carte mentale',
+      nodes: safeNodes,
+      edges: safeEdges,
+      timelineZoom: data.timelineZoomMode === 'fit' ? normalizeTimelineZoom(data.timelineZoom) : 1,
+      timelineZoomMode: 'fit',
+      view: {
+        x: Number.isFinite(Number(view.x)) ? Number(view.x) : 0,
+        y: Number.isFinite(Number(view.y)) ? Number(view.y) : 0,
+        scale: normalizeZoom(view.scale)
+      },
+      updatedAt: new Date().toISOString()
+    };
+  }
+
+  function loadLocal() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      state = sanitizeImported(JSON.parse(raw));
+    } catch (error) {
+      console.warn('Impossible de charger la sauvegarde locale.', error);
+      showToast('La sauvegarde locale n’a pas pu être chargée.');
+    }
+  }
+
+  function scheduleSave() {
+    hideTimelinePreview();
+    clearTimeout(saveTimer);
+    el.saveStatus.textContent = 'Modifications en cours…';
+    saveTimer = setTimeout(saveLocal, 250);
+  }
+
+  function saveLocal() {
+    try {
+      state.updatedAt = new Date().toISOString();
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      el.saveStatus.textContent = 'Sauvegarde locale effectuée';
+    } catch (error) {
+      console.error(error);
+      el.saveStatus.textContent = 'Sauvegarde locale impossible';
+      showToast('Stockage local saturé. Exportez votre carte en fichier JSON.');
+    }
+  }
+
+  function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+
+  function normalizeZoom(value) {
+    const scale = Number(value);
+    return Number.isFinite(scale) && scale > 0 ? clamp(scale, MIN_ZOOM, MAX_ZOOM) : 1;
+  }
+
+  function screenToWorld(clientX, clientY) {
+    const rect = el.canvas.getBoundingClientRect();
+    return {
+      x: (clientX - rect.left - state.view.x) / state.view.scale,
+      y: (clientY - rect.top - state.view.y) / state.view.scale
+    };
+  }
+
+  function worldToScreen(x, y) {
+    return { x: x * state.view.scale + state.view.x, y: y * state.view.scale + state.view.y };
+  }
+
+  function centerWorldPoint() {
+    const rect = el.canvas.getBoundingClientRect();
+    return screenToWorld(rect.left + rect.width / 2, rect.top + rect.height / 2);
+  }
+
+  function createNode(x, y, options = {}) {
+    pushHistory();
+    const node = {
+      id: uid('node'),
+      x: x - 105,
+      y: y - 42,
+      width: 210,
+      text: options.text || '',
+      fontSize: normalizeFontSize(options.fontSize),
+      eventTitle: typeof options.eventTitle === 'string' ? options.eventTitle.trim().slice(0, 160) : '',
+      eventAt: normalizeEventAt(options.eventAt),
+      image: '',
+      color: options.color || '#ffffff',
+      collapsed: false
+    };
+    state.nodes.push(node);
+    if (options.parentId) {
+      state.edges.push({ id: uid('edge'), source: options.parentId, target: node.id, label: '' });
+    }
+    selectItem('node', node.id);
+    renderAll();
+    scheduleSave();
+    if (options.focusText !== false) setTimeout(() => {
+      el.nodeText.focus();
+      el.nodeText.select();
+    }, 0);
+    return node;
+  }
+
+  function addNodeAtCenter() {
+    const p = centerWorldPoint();
+    createNode(p.x, p.y, { text: 'Nouvelle idée' });
+  }
+
+  function addChild() {
+    if (!selected || selected.type !== 'node' || selectedNodeIds.size !== 1) return;
+    const parent = getNode(selected.id);
+    if (!parent) return;
+    if (parent.collapsed) parent.collapsed = false;
+    const siblings = state.edges.filter(e => e.source === parent.id).length;
+    const x = parent.x + parent.width + 120;
+    const y = parent.y + siblings * 105;
+    createNode(x + 105, y + 42, { text: 'Nouvelle idée', parentId: parent.id, color: parent.color });
+  }
+
+  function getNode(id) { return state.nodes.find(n => n.id === id); }
+
+  function getDirectChildren(nodeId) {
+    return state.edges.filter(edge => edge.source === nodeId).map(edge => edge.target);
+  }
+
+  function getDirectNeighborhood(nodeId) {
+    const nodeIds = new Set([nodeId]);
+    const edgeIds = new Set();
+    for (const edge of state.edges) {
+      if (edge.source !== nodeId && edge.target !== nodeId) continue;
+      nodeIds.add(edge.source);
+      nodeIds.add(edge.target);
+      edgeIds.add(edge.id);
+    }
+    return { nodeIds, edgeIds };
+  }
+
+  function getBranchNodeIds(nodeId) {
+    const ids = [];
+    const visited = new Set();
+    const walk = currentId => {
+      if (visited.has(currentId) || !getNode(currentId)) return;
+      visited.add(currentId);
+      ids.push(currentId);
+      for (const childId of getDirectChildren(currentId)) walk(childId);
+    };
+    walk(nodeId);
+    return ids;
+  }
+
+  function getHiddenNodeIds() {
+    const hidden = new Set();
+    for (const node of state.nodes) {
+      if (!node.collapsed) continue;
+      const visited = new Set([node.id]);
+      const walk = nodeId => {
+        for (const childId of getDirectChildren(nodeId)) {
+          if (visited.has(childId)) continue;
+          visited.add(childId);
+          hidden.add(childId);
+          walk(childId);
+        }
+      };
+      walk(node.id);
+    }
+    return hidden;
+  }
+
+  function getVisibleNodes() {
+    const hidden = getHiddenNodeIds();
+    return state.nodes.filter(node => !hidden.has(node.id));
+  }
+
+  function toggleBranch(nodeId) {
+    const node = getNode(nodeId);
+    if (!node || getDirectChildren(nodeId).length === 0) return;
+    pushHistory();
+    node.collapsed = !node.collapsed;
+    const hidden = getHiddenNodeIds();
+    let selectionWasHidden = false;
+    for (const id of [...selectedNodeIds]) {
+      if (hidden.has(id)) {
+        selectedNodeIds.delete(id);
+        selectionWasHidden = true;
+      }
+    }
+    if (selected?.type === 'node' && hidden.has(selected.id)) selectionWasHidden = true;
+    if (selected?.type === 'edge') {
+      const edge = state.edges.find(item => item.id === selected.id);
+      if (edge && (hidden.has(edge.source) || hidden.has(edge.target))) selectionWasHidden = true;
+    }
+    if (selectionWasHidden && selectedNodeIds.size === 0) {
+      selectedNodeIds.add(nodeId);
+      selected = { type: 'node', id: nodeId };
+    } else if (selectedNodeIds.size > 0 && (selected?.type !== 'node' || !selectedNodeIds.has(selected.id))) {
+      selected = { type: 'node', id: [...selectedNodeIds][0] };
+    }
+    renderAll();
+    scheduleSave();
+    showToast(node.collapsed ? 'Branche réduite.' : 'Branche développée.');
+  }
+
+  function deleteSelection() {
+    const nodeIds = new Set(selectedNodeIds);
+    if (!nodeIds.size && !selected) return;
+    pushHistory();
+    if (nodeIds.size) {
+      state.nodes = state.nodes.filter(n => !nodeIds.has(n.id));
+      state.edges = state.edges.filter(e => !nodeIds.has(e.source) && !nodeIds.has(e.target));
+    } else if (selected?.type === 'edge') {
+      state.edges = state.edges.filter(e => e.id !== selected.id);
+    }
+    selected = null;
+    selectedNodeIds.clear();
+    renderAll();
+    el.modeStatus.textContent = 'Mode déplacement';
+    scheduleSave();
+  }
+
+  function selectItem(type, id) {
+    if (type === 'node' && id) {
+      selectedNodeIds = new Set([id]);
+      selected = { type, id };
+    } else {
+      selectedNodeIds.clear();
+      selected = id ? { type, id } : null;
+    }
+    if (connectMode && type === 'node' && id) handleConnectClick(id);
+    renderSelection();
+    updateInspector();
+    updateButtons();
+    updateStatus();
+    if (!connectMode) el.modeStatus.textContent = 'Mode déplacement';
+  }
+
+  function toggleNodeSelection(id) {
+    if (selectedNodeIds.has(id)) {
+      selectedNodeIds.delete(id);
+      if (selected?.type === 'node' && selected.id === id) {
+        const fallback = [...selectedNodeIds].at(-1);
+        selected = fallback ? { type: 'node', id: fallback } : null;
+      }
+    } else {
+      selectedNodeIds.add(id);
+      selected = { type: 'node', id };
+    }
+    renderSelection();
+    updateInspector();
+    updateButtons();
+    updateStatus();
+    el.modeStatus.textContent = selectedNodeIds.size > 1 ? `${selectedNodeIds.size} étiquettes sélectionnées` : 'Mode déplacement';
+  }
+
+  function setNodeSelection(ids, primaryId = null) {
+    selectedNodeIds = new Set(ids.filter(id => getNode(id)));
+    const primary = primaryId && selectedNodeIds.has(primaryId) ? primaryId : [...selectedNodeIds].at(-1);
+    selected = primary ? { type: 'node', id: primary } : null;
+    renderSelection();
+    updateInspector();
+    updateButtons();
+    updateStatus();
+    el.modeStatus.textContent = selectedNodeIds.size > 1 ? `${selectedNodeIds.size} étiquettes sélectionnées` : 'Mode déplacement';
+  }
+
+  function clearSelection() {
+    selected = null;
+    selectedNodeIds.clear();
+    renderSelection();
+    updateInspector();
+    updateButtons();
+    updateStatus();
+    if (!connectMode) el.modeStatus.textContent = 'Mode déplacement';
+  }
+
+  function startConnectMode() {
+    connectMode = true;
+    connectSourceId = selected?.type === 'node' && selectedNodeIds.size === 1 ? selected.id : null;
+    previewPoint = null;
+    el.connectBtn.classList.add('active');
+    el.canvas.classList.add('connecting');
+    el.modeStatus.textContent = connectSourceId ? 'Choisissez l’étiquette d’arrivée' : 'Choisissez l’étiquette de départ';
+    renderSelection();
+  }
+
+  function stopConnectMode() {
+    connectMode = false;
+    connectSourceId = null;
+    previewPoint = null;
+    el.connectBtn.classList.remove('active');
+    el.canvas.classList.remove('connecting');
+    el.modeStatus.textContent = 'Mode déplacement';
+    renderEdges();
+    renderSelection();
+  }
+
+  function toggleConnectMode() {
+    if (connectMode) stopConnectMode(); else startConnectMode();
+  }
+
+  function handleConnectClick(nodeId) {
+    if (!connectMode) return;
+    if (!connectSourceId) {
+      connectSourceId = nodeId;
+      el.modeStatus.textContent = 'Choisissez l’étiquette d’arrivée';
+      renderSelection();
+      return;
+    }
+    if (connectSourceId === nodeId) {
+      showToast('Choisissez une autre étiquette.');
+      return;
+    }
+    const duplicate = state.edges.some(e =>
+      (e.source === connectSourceId && e.target === nodeId) ||
+      (e.source === nodeId && e.target === connectSourceId)
+    );
+    if (!duplicate) {
+      pushHistory();
+      state.edges.push({ id: uid('edge'), source: connectSourceId, target: nodeId, label: '' });
+      scheduleSave();
+    } else {
+      showToast('Ces deux étiquettes sont déjà reliées.');
+    }
+    stopConnectMode();
+    renderAll();
+  }
+
+  function normalizeTimelineZoom(value) {
+    return typeof value === 'number' && Number.isFinite(value) ? Math.max(1, value) : 1;
+  }
+
+  function timelineZoomLayout(count, viewportWidth, requestedZoom) {
+    const maximum = Math.max(1, count);
+    const zoom = clamp(normalizeTimelineZoom(requestedZoom), 1, maximum);
+    // Round down to a browser layout subpixel so the full view never overflows.
+    const itemWidth = Math.floor(viewportWidth / maximum * zoom * 64) / 64;
+    return { zoom, maximum, itemWidth };
+  }
+
+  function applyTimelineZoom(anchorClientX) {
+    const scroll = el.timelineScroll;
+    if (!scroll.clientWidth) return;
+    const { zoom, maximum, itemWidth } = timelineZoomLayout(timelineNodes().length, scroll.clientWidth, state.timelineZoom);
+    const anchor = anchorClientX == null ? scroll.clientWidth / 2 : clamp(anchorClientX - scroll.getBoundingClientRect().left, 0, scroll.clientWidth);
+    const oldAnchor = anchorClientX == null && timelineViewportWidth ? timelineViewportWidth / 2 : anchor;
+    const point = (scroll.scrollLeft + oldAnchor) / (timelineItemWidth || itemWidth || 1);
+    state.timelineZoom = zoom;
+    timelineItemWidth = itemWidth;
+    timelineViewportWidth = scroll.clientWidth;
+    el.timelineTrack.style.setProperty('--timeline-item-width', `${itemWidth}px`);
+    el.timelineTrack.style.setProperty('--timeline-zoom', String(itemWidth / 188));
+    el.timelineZoomReset.textContent = `${Math.round(zoom * 100)} %`;
+    el.timelineZoomReset.setAttribute('aria-label', `Zoom de la chronologie : ${Math.round(zoom * 100)} %. Afficher tous les événements`);
+    el.timelineZoomOut.disabled = zoom <= 1;
+    el.timelineZoomIn.disabled = zoom >= maximum;
+    scroll.classList.toggle('unit-view', zoom === maximum && maximum > 1);
+    scroll.scrollLeft = zoom === 1 ? 0 : zoom === maximum
+      ? clamp(Math.floor(point), 0, maximum - 1) * itemWidth
+      : Math.max(0, point * itemWidth - anchor);
+    hideTimelinePreview();
+  }
+
+  function setTimelineZoom(next, anchorClientX) {
+    const previous = normalizeTimelineZoom(state.timelineZoom);
+    const zoom = timelineZoomLayout(timelineNodes().length, el.timelineScroll.clientWidth, next).zoom;
+    if (previous === zoom) return;
+    state.timelineZoom = zoom;
+    applyTimelineZoom(anchorClientX);
+    scheduleSave();
+  }
+
+  function normalizeEventAt(value) {
+    if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value) || value.slice(0, 4) === '0000') return '';
+    // Validate the calendar without changing the wall-clock time or timezone.
+    const date = new Date(value + ':00Z');
+    return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 16) === value ? value : '';
+  }
+
+  function formatEventAt(value) {
+    if (!normalizeEventAt(value)) return '';
+    return new Intl.DateTimeFormat('fr-FR', {
+      day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'UTC'
+    }).format(new Date(value + ':00Z'));
+  }
+
+  function timelineNodes() {
+    return state.nodes.filter(node => node.eventTitle?.trim() && normalizeEventAt(node.eventAt))
+      .slice().sort((a, b) => a.eventAt.localeCompare(b.eventAt) || a.eventTitle.localeCompare(b.eventTitle, 'fr'));
+  }
+
+  function hideTimelinePreview() {
+    clearTimeout(previewHideTimer);
+    el.timelinePreview.hidden = true;
+    previewTrigger?.removeAttribute('aria-describedby');
+    previewTrigger = null;
+  }
+
+  function deferHideTimelinePreview() {
+    clearTimeout(previewHideTimer);
+    previewHideTimer = setTimeout(hideTimelinePreview, 180);
+  }
+
+  function showTimelinePreview(button) {
+    const node = getNode(button.dataset.nodeId);
+    if (!node) return;
+    hideTimelinePreview();
+    previewTrigger = button;
+    button.setAttribute('aria-describedby', 'timelinePreview');
+    const preview = el.timelinePreview;
+    preview.replaceChildren();
+    const title = document.createElement('h3'); title.textContent = node.eventTitle;
+    const time = document.createElement('time'); time.dateTime = node.eventAt; time.textContent = formatEventAt(node.eventAt);
+    preview.append(title, time);
+    if (node.image) {
+      const image = document.createElement('img'); image.src = node.image; image.alt = '';
+      preview.appendChild(image);
+    }
+    const body = document.createElement('div'); body.className = 'timeline-preview-body';
+    if (node.text) paintRichText(body, node); else body.textContent = 'Aucune note pour cet événement.';
+    preview.appendChild(body);
+    preview.hidden = false;
+    const rect = button.getBoundingClientRect();
+    preview.style.left = Math.max(12, Math.min(innerWidth - preview.offsetWidth - 12, rect.left)) + 'px';
+    preview.style.top = Math.max(12, Math.min(innerHeight - preview.offsetHeight - 12, rect.bottom + 6)) + 'px';
+  }
+
+  function renderTimeline() {
+    hideTimelinePreview();
+    const focusedId = document.activeElement?.closest('.timeline-event')?.dataset.nodeId;
+    const nodes = timelineNodes();
+    el.timelineCount.textContent = nodes.length ? `(${nodes.length})` : '';
+    const fragment = document.createDocumentFragment();
+    if (!nodes.length) {
+      const empty = document.createElement('li'); empty.className = 'timeline-empty';
+      empty.style.flexBasis = 'auto'; empty.style.width = 'auto';
+      empty.textContent = 'Ajoutez un événement ou renseignez le titre et la date d’une étiquette.';
+      fragment.appendChild(empty);
+    }
+    for (const node of nodes) {
+      const item = document.createElement('li');
+      const button = document.createElement('button');
+      button.type = 'button'; button.className = 'timeline-event'; button.dataset.nodeId = node.id;
+      button.setAttribute('aria-current', String(selectedNodeIds.has(node.id)));
+      const time = document.createElement('time'); time.dateTime = node.eventAt; time.textContent = formatEventAt(node.eventAt);
+      const dot = document.createElement('span'); dot.className = 'timeline-dot'; dot.setAttribute('aria-hidden', 'true');
+      const title = document.createElement('strong'); title.textContent = node.eventTitle;
+      button.append(time, dot, title);
+      button.addEventListener('mouseenter', () => showTimelinePreview(button));
+      button.addEventListener('mouseleave', deferHideTimelinePreview);
+      button.addEventListener('focus', () => showTimelinePreview(button));
+      button.addEventListener('blur', hideTimelinePreview);
+      button.addEventListener('click', () => focusTimelineNode(node.id));
+      item.appendChild(button); fragment.appendChild(item);
+    }
+    el.timelineTrack.replaceChildren(fragment);
+    applyTimelineZoom();
+    if (focusedId) el.timelineTrack.querySelector(`[data-node-id="${CSS.escape(focusedId)}"]`)?.focus({ preventScroll: true });
+  }
+
+  function focusTimelineNode(id) {
+    const node = getNode(id);
+    if (!node) return;
+    stopConnectMode();
+    if (window.matchMedia('(max-width: 599px)').matches) {
+      el.inspector.classList.remove('mobile-open');
+      el.inspectorToggle.setAttribute('aria-expanded', 'false');
+      el.inspectorToggle.title = 'Afficher les propriétés';
+      el.inspectorToggle.classList.remove('active');
+    }
+    const ancestors = new Set();
+    const pending = [id];
+    const visited = new Set([id]);
+    while (pending.length) {
+      const current = pending.pop();
+      for (const edge of state.edges) {
+        if (edge.target !== current) continue;
+        ancestors.add(edge.source);
+        if (!visited.has(edge.source)) { visited.add(edge.source); pending.push(edge.source); }
+      }
+    }
+    const folded = state.nodes.filter(n => ancestors.has(n.id) && n.collapsed);
+    if (folded.length) { pushHistory(); folded.forEach(n => { n.collapsed = false; }); }
+    renderNodes(); renderEdges(); selectItem('node', id);
+    const rect = el.canvas.getBoundingClientRect();
+    // Restore a readable label from a distant overview, while fitting it in view.
+    state.view.scale = clamp(Math.min(Math.max(1, state.view.scale), Math.max(1, rect.width - 40) / node.width, Math.max(1, rect.height - 40) / getNodeHeight(node)), MIN_ZOOM, MAX_ZOOM);
+    state.view.x = rect.width / 2 - (node.x + node.width / 2) * state.view.scale;
+    state.view.y = rect.height / 2 - (node.y + getNodeHeight(node) / 2) * state.view.scale;
+    applyView(); scheduleSave();
+    el.nodes.querySelector(`[data-node-id="${CSS.escape(id)}"]`)?.focus({ preventScroll: true });
+  }
+
+  function changeNodeEvent() {
+    const node = selected?.type === 'node' && selectedNodeIds.size === 1 ? getNode(selected.id) : null;
+    if (!node) return;
+    const title = el.nodeEventTitle.value.trim().slice(0, 160);
+    const date = normalizeEventAt(el.nodeEventAt.value);
+    if (!el.nodeEventAt.validity.valid || (el.nodeEventAt.value && !date)) return;
+    if (title === (node.eventTitle || '') && date === (node.eventAt || '')) return;
+    if (!eventHistoryTimer || eventHistoryNodeId !== node.id) pushHistory();
+    clearTimeout(eventHistoryTimer);
+    eventHistoryNodeId = node.id;
+    eventHistoryTimer = setTimeout(() => { eventHistoryTimer = null; }, 900);
+    node.eventTitle = title; node.eventAt = date;
+    renderAll(); scheduleSave();
+  }
+
+  function renderAll() {
+    renderNodes();
+    applyView();
+    renderTimeline();
+    renderSelection();
+    updateInspector();
+    updateButtons();
+    updateStatus();
+    el.empty.classList.toggle('hidden', state.nodes.length > 0);
+  }
+
+  function applyView() {
+    // Keep the grid readable at every scale instead of packing sub-pixel dots.
+    const gridLevel = Math.max(0, Math.ceil(Math.log2(1 / state.view.scale)));
+    const gridSize = 24 * state.view.scale * 2 ** gridLevel;
+    el.grid.style.backgroundSize = `${gridSize}px ${gridSize}px`;
+    el.grid.style.backgroundPosition = `${state.view.x % gridSize}px ${state.view.y % gridSize}px`;
+    const percent = state.view.scale * 100;
+    el.zoomValue.textContent = (percent < .01
+      ? percent.toExponential(1).replace('.', ',')
+      : percent.toLocaleString('fr-FR', { maximumFractionDigits: percent < 1 ? 3 : percent < 10 ? 2 : 0 })) + ' %';
+    el.zoomOutBtn.disabled = state.view.scale <= MIN_ZOOM;
+    el.zoomInBtn.disabled = state.view.scale >= MAX_ZOOM;
+    const nodesById = new Map(state.nodes.map(node => [node.id, node]));
+    for (const dom of el.nodes.children) {
+      const node = nodesById.get(dom.dataset.nodeId);
+      if (node) positionNode(dom, node);
+    }
+    renderEdges();
+  }
+
+  function positionNode(dom, node) {
+    // Project before assigning CSS coordinates: browsers clamp huge left/top values.
+    const point = worldToScreen(node.x, node.y);
+    const inRange = Number.isFinite(point.x) && Number.isFinite(point.y)
+      && Math.abs(point.x) < 1e7 && Math.abs(point.y) < 1e7;
+    dom.style.visibility = inRange ? '' : 'hidden';
+    dom.style.left = (inRange ? point.x : 0) + 'px';
+    dom.style.top = (inRange ? point.y : 0) + 'px';
+    dom.style.transform = `scale(${state.view.scale})`;
+  }
+
+  function renderNodes() {
+    const fragment = document.createDocumentFragment();
+    for (const node of getVisibleNodes()) {
+      const div = document.createElement('div');
+      div.className = 'node';
+      div.dataset.nodeId = node.id;
+      positionNode(div, node);
+      div.style.width = node.width + 'px';
+      if (node.height) div.style.minHeight = node.height + 'px';
+      div.style.setProperty('--node-color', node.color);
+      div.tabIndex = 0;
+      div.setAttribute('role', 'button');
+      div.setAttribute('aria-label', [node.eventTitle, node.text].filter(Boolean).join(' : ') || 'Étiquette vide');
+      div.title = 'Glisser : déplacer · Ctrl + Alt + clic : sélectionner les voisines directes'
+        + (getDirectChildren(node.id).length ? ' · Alt + glisser : déplacer toute la branche' : '');
+
+      if (node.image) {
+        const img = document.createElement('img');
+        img.className = 'node-image';
+        img.addEventListener('load', () => { if (img.isConnected) renderEdges(); });
+        img.src = node.image;
+        img.alt = '';
+        div.appendChild(img);
+      }
+
+      const content = document.createElement('div');
+      if (node.eventTitle || node.eventAt) {
+        const heading = document.createElement('div');
+        heading.className = 'node-event-heading';
+        const title = document.createElement('strong');
+        title.textContent = node.eventTitle || 'Événement sans titre';
+        heading.appendChild(title);
+        const date = document.createElement('time');
+        date.dateTime = node.eventAt || '';
+        date.textContent = node.eventAt ? formatEventAt(node.eventAt) : 'Date à renseigner';
+        heading.appendChild(date);
+        div.appendChild(heading);
+      }
+      content.className = 'node-content' + (node.text.trim() ? '' : ' empty');
+      paintRichText(content, node);
+      content.addEventListener('input', () => syncRichEditor(content, node));
+      content.addEventListener('paste', event => {
+        event.preventDefault();
+        document.execCommand('insertText', false, event.clipboardData.getData('text/plain'));
+      });
+      content.addEventListener('drop', event => {
+        event.preventDefault();
+        if (content.isContentEditable) document.execCommand('insertText', false, event.dataTransfer.getData('text/plain'));
+      });
+      content.addEventListener('keydown', event => {
+        if (!content.isContentEditable) return;
+        if (event.key === 'Escape') { content.blur(); return; }
+        if (event.key === 'Enter' && !event.ctrlKey && !event.metaKey) {
+          event.preventDefault(); document.execCommand('insertText', false, '\n');
+        }
+      });
+      content.addEventListener('blur', () => {
+        content.contentEditable = 'false';
+        content.classList.remove('editing');
+        document.getElementById('textFormatPopup').hidden = true;
+      });
+      div.appendChild(content);
+
+      const resizeHandle = document.createElement('button');
+      resizeHandle.type = 'button';
+      resizeHandle.className = 'node-resize-handle';
+      resizeHandle.title = 'Glisser pour redimensionner cette étiquette';
+      resizeHandle.setAttribute('aria-label', resizeHandle.title);
+      resizeHandle.addEventListener('pointerdown', event => {
+        if (event.button !== 0 || interaction) return;
+        event.preventDefault();
+        event.stopPropagation();
+        selectItem('node', node.id);
+        interaction = { type: 'node-resize', pointerId: event.pointerId, nodeId: node.id,
+          startX: event.clientX, startY: event.clientY, width: node.width,
+          height: getNodeHeight(node), moved: false };
+        el.canvas.setPointerCapture(event.pointerId);
+      });
+      resizeHandle.addEventListener('click', event => event.stopPropagation());
+      resizeHandle.addEventListener('dblclick', event => event.stopPropagation());
+      div.appendChild(resizeHandle);
+
+      const badge = document.createElement('div');
+      badge.className = 'node-badge';
+      badge.textContent = '1';
+      div.appendChild(badge);
+
+      const childCount = getDirectChildren(node.id).length;
+      if (childCount > 0) {
+        const branchHandle = document.createElement('button');
+        branchHandle.type = 'button';
+        branchHandle.className = 'branch-drag-handle';
+        branchHandle.title = 'Déplacer cette étiquette et toutes ses sous-étiquettes';
+        branchHandle.setAttribute('aria-label', branchHandle.title);
+        branchHandle.innerHTML = '<svg viewBox="0 0 24 24"><path d="M5 4v5a4 4 0 0 0 4 4h10"/><path d="m16 10 3 3-3 3"/><path d="M8 4H3M5.5 1.5 3 4l2.5 2.5"/></svg>';
+        branchHandle.addEventListener('pointerdown', event => {
+          event.stopPropagation();
+          event.preventDefault();
+          beginNodeDrag(event, node.id, true);
+        });
+        branchHandle.addEventListener('click', event => event.stopPropagation());
+        div.appendChild(branchHandle);
+
+        const toggle = document.createElement('button');
+        toggle.type = 'button';
+        toggle.className = 'branch-toggle';
+        toggle.title = node.collapsed ? 'Développer la branche' : 'Réduire la branche';
+        toggle.setAttribute('aria-label', toggle.title);
+        toggle.setAttribute('aria-expanded', String(!node.collapsed));
+        toggle.innerHTML = `<span>${node.collapsed ? '+' : '−'}</span><span class="branch-count">${childCount}</span>`;
+        toggle.addEventListener('pointerdown', event => event.stopPropagation());
+        toggle.addEventListener('click', event => {
+          event.stopPropagation();
+          toggleBranch(node.id);
+        });
+        div.appendChild(toggle);
+      }
+
+      div.addEventListener('pointerdown', onNodePointerDown);
+      div.addEventListener('click', onNodeClick);
+      div.addEventListener('dblclick', () => {
+        selectItem('node', node.id);
+        content.contentEditable = 'true';
+        content.classList.add('editing');
+        if (!node.text) content.textContent = '';
+        content.focus();
+      });
+      div.addEventListener('keydown', event => {
+        if (isTypingTarget(event.target)) return;
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          selectItem('node', node.id);
+        }
+      });
+      fragment.appendChild(div);
+    }
+    el.nodes.replaceChildren(fragment);
+  }
+
+  function nodeAnchor(node, towardNode) {
+    const a = { x: node.x + node.width / 2, y: node.y + getNodeHeight(node) / 2 };
+    const b = towardNode ? { x: towardNode.x + towardNode.width / 2, y: towardNode.y + getNodeHeight(towardNode) / 2 } : previewPoint;
+    if (!b) return a;
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const halfW = node.width / 2;
+    const halfH = getNodeHeight(node) / 2;
+    if (dx === 0 && dy === 0) return a;
+    const tx = halfW / Math.max(Math.abs(dx), 0.001);
+    const ty = halfH / Math.max(Math.abs(dy), 0.001);
+    const t = Math.min(tx, ty);
+    return { x: a.x + dx * t, y: a.y + dy * t };
+  }
+
+  function getNodeHeight(node) {
+    const dom = el.nodes.querySelector(`[data-node-id="${CSS.escape(node.id)}"]`);
+    if (dom) return dom.offsetHeight;
+    const fontSize = normalizeFontSize(node.fontSize);
+    const textLines = Math.max(1, Math.ceil((node.text.length || 12) / Math.max(1, (node.width - 30) / (fontSize * .64))));
+    return Math.max(node.height || 72, 28 + textLines * fontSize * 1.36 + (node.image ? 150 : 0) + (node.eventTitle || node.eventAt ? 44 : 0));
+  }
+
+  function edgeGeometry(source, target) {
+    const p1 = nodeAnchor(source, target);
+    const p2 = nodeAnchor(target, source);
+    const dx = p2.x - p1.x;
+    const bend = Math.max(60, Math.abs(dx) * .45);
+    const c1 = { x: p1.x + Math.sign(dx || 1) * bend, y: p1.y };
+    const c2 = { x: p2.x - Math.sign(dx || 1) * bend, y: p2.y };
+    return { p1, p2, c1, c2 };
+  }
+
+  function edgePath(source, target) {
+    return projectedEdgePath(edgeGeometry(source, target));
+  }
+
+  function projectedEdgePath(geometry) {
+    const { p1, p2, c1, c2 } = Object.fromEntries(Object.entries(geometry)
+      .map(([key, point]) => [key, worldToScreen(point.x, point.y)]));
+    return `M ${p1.x} ${p1.y} C ${c1.x} ${c1.y}, ${c2.x} ${c2.y}, ${p2.x} ${p2.y}`;
+  }
+
+  function cubicPoint(p1, c1, c2, p2, t = .5) {
+    const mt = 1 - t;
+    return {
+      x: mt ** 3 * p1.x + 3 * mt ** 2 * t * c1.x + 3 * mt * t ** 2 * c2.x + t ** 3 * p2.x,
+      y: mt ** 3 * p1.y + 3 * mt ** 2 * t * c1.y + 3 * mt * t ** 2 * c2.y + t ** 3 * p2.y
+    };
+  }
+
+  function renderEdges() {
+    const ns = 'http://www.w3.org/2000/svg';
+    const fragment = document.createDocumentFragment();
+    const hidden = getHiddenNodeIds();
+    for (const edge of state.edges) {
+      if (hidden.has(edge.source) || hidden.has(edge.target)) continue;
+      const source = getNode(edge.source);
+      const target = getNode(edge.target);
+      if (!source || !target) continue;
+      const g = document.createElementNS(ns, 'g');
+      g.classList.add('edge-group');
+      g.dataset.edgeId = edge.id;
+      const visible = document.createElementNS(ns, 'path');
+      visible.setAttribute('class', 'edge-visible');
+      visible.setAttribute('d', edgePath(source, target));
+      const hit = document.createElementNS(ns, 'path');
+      hit.setAttribute('class', 'edge-hit');
+      hit.setAttribute('d', edgePath(source, target));
+      hit.addEventListener('click', event => {
+        event.stopPropagation();
+        stopConnectMode();
+        selectItem('edge', edge.id);
+      });
+      g.append(visible, hit);
+      if (edge.label && edge.label.trim()) {
+        const { p1, p2, c1, c2 } = edgeGeometry(source, target);
+        const mid = cubicPoint(p1, c1, c2, p2);
+        const labelGroup = document.createElementNS(ns, 'g');
+        const screenMid = worldToScreen(mid.x, mid.y);
+        labelGroup.setAttribute('transform', `translate(${screenMid.x} ${screenMid.y}) scale(${state.view.scale})`);
+        const text = document.createElementNS(ns, 'text');
+        text.setAttribute('class', 'edge-label-text');
+        text.textContent = edge.label.trim();
+        labelGroup.appendChild(text);
+        g.appendChild(labelGroup);
+        fragment.appendChild(g);
+        const estimatedWidth = Math.min(300, Math.max(24, edge.label.trim().length * 7.2));
+        const bg = document.createElementNS(ns, 'rect');
+        bg.setAttribute('class', 'edge-label-bg');
+        bg.setAttribute('x', String(-estimatedWidth / 2 - 7));
+        bg.setAttribute('y', '-11');
+        bg.setAttribute('width', String(estimatedWidth + 14));
+        bg.setAttribute('height', '22');
+        bg.setAttribute('rx', '7');
+        labelGroup.insertBefore(bg, text);
+      } else {
+        fragment.appendChild(g);
+      }
+    }
+
+    if (connectMode && connectSourceId && previewPoint) {
+      const source = getNode(connectSourceId);
+      if (source) {
+        const p1 = nodeAnchor(source, null);
+        const p2 = previewPoint;
+        const dx = p2.x - p1.x;
+        const bend = Math.max(60, Math.abs(dx) * .45);
+        const path = projectedEdgePath({ p1, p2,
+          c1: { x: p1.x + Math.sign(dx || 1) * bend, y: p1.y },
+          c2: { x: p2.x - Math.sign(dx || 1) * bend, y: p2.y } });
+        const g = document.createElementNS(ns, 'g');
+        g.classList.add('edge-group', 'connect-preview');
+        const visible = document.createElementNS(ns, 'path');
+        visible.setAttribute('class', 'edge-visible');
+        visible.setAttribute('d', path);
+        g.appendChild(visible);
+        fragment.appendChild(g);
+      }
+    }
+    el.edges.replaceChildren(fragment);
+    renderSelection();
+  }
+
+  function renderSelection() {
+    // Context is visual only: related nodes never enter the actual selection.
+    const neighborhood = selectedNodeIds.size === 1 && selected?.type === 'node'
+      ? getDirectNeighborhood(selected.id)
+      : { nodeIds: new Set(), edgeIds: new Set() };
+    el.timelineTrack.querySelectorAll('.timeline-event').forEach(button => {
+      button.setAttribute('aria-current', String(selectedNodeIds.has(button.dataset.nodeId)));
+    });
+    el.nodes.querySelectorAll('.node').forEach(nodeEl => {
+      const id = nodeEl.dataset.nodeId;
+      nodeEl.classList.toggle('selected', selectedNodeIds.has(id));
+      nodeEl.classList.toggle('related', !selectedNodeIds.has(id) && neighborhood.nodeIds.has(id));
+      nodeEl.classList.toggle('connect-source', connectMode && connectSourceId === id);
+    });
+    el.edges.querySelectorAll('.edge-group').forEach(edgeEl => {
+      edgeEl.classList.toggle('related', neighborhood.edgeIds.has(edgeEl.dataset.edgeId));
+      edgeEl.classList.toggle('selected', selectedNodeIds.size === 0 && selected?.type === 'edge' && selected.id === edgeEl.dataset.edgeId);
+    });
+  }
+
+  function updateInspector() {
+    const selectionCount = selectedNodeIds.size;
+    const node = selectionCount === 1 && selected?.type === 'node' ? getNode(selected.id) : null;
+    const edgeSelected = selectionCount === 0 && selected?.type === 'edge';
+    el.nodeInspector.hidden = !node;
+    el.edgeInspector.hidden = !edgeSelected;
+    el.nothingInspector.hidden = Boolean(node || edgeSelected);
+
+    if (node) {
+      el.inspectorTitle.textContent = 'Étiquette';
+      el.inspectorSubtitle.textContent = 'Double-cliquez dans la bulle, puis sélectionnez du texte pour le mettre en forme. Sauvegarde automatique.';
+      if (document.activeElement !== el.nodeText) el.nodeText.value = node.text;
+      el.nodeFontSize.value = String(normalizeFontSize(node.fontSize));
+      el.nodeText.style.fontSize = normalizeFontSize(node.fontSize) + 'px';
+      updatePanelTextFormats();
+      el.nodeSize.value = [170,210,270,340].includes(node.width) ? String(node.width) : 'custom';
+      if (document.activeElement !== el.nodeEventTitle) el.nodeEventTitle.value = node.eventTitle || '';
+      if (document.activeElement !== el.nodeEventAt) el.nodeEventAt.value = node.eventAt || '';
+      el.removeEventBtn.disabled = !node.eventAt;
+      renderImagePreview(node);
+      renderColors(node.color);
+    } else if (edgeSelected) {
+      const edge = state.edges.find(item => item.id === selected.id);
+      el.inspectorTitle.textContent = 'Liaison';
+      el.inspectorSubtitle.textContent = 'Connexion entre deux étiquettes.';
+      if (document.activeElement !== el.edgeLabel) el.edgeLabel.value = edge?.label || '';
+    } else if (selectionCount > 1) {
+      const hidden = getHiddenNodeIds();
+      const hiddenCount = [...selectedNodeIds].filter(id => hidden.has(id)).length;
+      el.inspectorTitle.textContent = `${selectionCount} étiquettes`;
+      el.inspectorSubtitle.textContent = hiddenCount
+        ? `Sélection multiple active, dont ${hiddenCount} étiquette${hiddenCount > 1 ? 's' : ''} masquée${hiddenCount > 1 ? 's' : ''}.`
+        : 'Sélection multiple active.';
+      el.nothingInspector.innerHTML = '<div class="inspector-empty">Glissez l’une des étiquettes sélectionnées pour déplacer tout le groupe. Utilisez <kbd>Suppr</kbd> pour les supprimer ensemble.</div>';
+    } else {
+      el.inspectorTitle.textContent = 'Propriétés';
+      el.inspectorSubtitle.textContent = 'Sélectionnez une étiquette pour la modifier.';
+      el.nothingInspector.innerHTML = '<div class="inspector-empty">Sélectionnez une étiquette pour modifier son texte, son image, sa couleur et sa largeur.</div>';
+    }
+  }
+
+  function renderImagePreview(node) {
+    el.imagePreview.replaceChildren();
+    if (node.image) {
+      const img = document.createElement('img');
+      img.src = node.image;
+      img.alt = 'Image de l’étiquette';
+      el.imagePreview.appendChild(img);
+      el.removeImageBtn.disabled = false;
+    } else {
+      el.imagePreview.textContent = 'Aucune image';
+      el.removeImageBtn.disabled = true;
+    }
+  }
+
+  function renderColors(current) {
+    el.colorRow.replaceChildren();
+    for (const color of NODE_COLORS) {
+      const button = document.createElement('button');
+      button.className = 'color-swatch' + (color === current ? ' selected' : '');
+      button.style.background = color;
+      button.title = color;
+      button.setAttribute('aria-label', 'Choisir la couleur ' + color);
+      button.addEventListener('click', () => changeNodeColor(color));
+      el.colorRow.appendChild(button);
+    }
+  }
+
+  function updateButtons() {
+    const hasSingleNode = selected?.type === 'node' && selectedNodeIds.size === 1;
+    el.addChildBtn.disabled = !hasSingleNode;
+    el.deleteBtn.disabled = selectedNodeIds.size === 0 && !selected;
+    el.undoBtn.disabled = history.length === 0;
+    el.redoBtn.disabled = future.length === 0;
+  }
+
+  function updateStatus() {
+    const n = state.nodes.length;
+    const e = state.edges.length;
+    const selection = selectedNodeIds.size > 1 ? ` · ${selectedNodeIds.size} sélectionnées` : '';
+    el.countStatus.textContent = `${n} étiquette${n > 1 ? 's' : ''} · ${e} liaison${e > 1 ? 's' : ''}${selection}`;
+  }
+
+  function onNodeClick(event) {
+    event.stopPropagation();
+    if (!connectMode) return;
+    const id = event.currentTarget.dataset.nodeId;
+    selectItem('node', id);
+  }
+
+  function onNodePointerDown(event) {
+    if (event.target.isContentEditable) { event.stopPropagation(); return; }
+    if (event.button !== 0) return;
+    event.stopPropagation();
+    const id = event.currentTarget.dataset.nodeId;
+    const selectNeighbors = event.ctrlKey && event.altKey;
+    beginNodeDrag(event, id, event.altKey && !selectNeighbors, selectNeighbors);
+  }
+
+  function beginNodeDrag(event, id, forceBranch = false, selectNeighbors = false) {
+    if (connectMode) {
+      event.preventDefault();
+      return;
+    }
+    const node = getNode(id);
+    if (!node) return;
+
+    if (forceBranch) {
+      selectItem('node', id);
+    } else if (selectNeighbors) {
+      event.preventDefault();
+      setNodeSelection([...getDirectNeighborhood(id).nodeIds], id);
+    } else if (event.shiftKey) {
+      toggleNodeSelection(id);
+      if (!selectedNodeIds.has(id)) return;
+    } else if (!selectedNodeIds.has(id)) {
+      selectItem('node', id);
+    }
+
+    const dragIds = forceBranch
+      ? getBranchNodeIds(id)
+      : (selectedNodeIds.has(id) && selectedNodeIds.size > 1 ? [...selectedNodeIds] : [id]);
+    const positions = new Map();
+    for (const dragId of dragIds) {
+      const dragNode = getNode(dragId);
+      if (dragNode) positions.set(dragId, { x: dragNode.x, y: dragNode.y });
+    }
+    if (!positions.size) return;
+
+    interaction = {
+      type: 'nodes-drag',
+      anchorId: id,
+      ids: [...positions.keys()],
+      positions,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      moved: false,
+      collapseToSingleOnClick: !forceBranch && !selectNeighbors && !event.shiftKey && selectedNodeIds.size > 1,
+      label: forceBranch ? 'branch' : (positions.size > 1 ? 'selection' : 'node')
+    };
+    if (interaction.label === 'branch') el.modeStatus.textContent = `Déplacement de la branche (${positions.size})`;
+    else if (interaction.label === 'selection') el.modeStatus.textContent = `Déplacement groupé (${positions.size})`;
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function onCanvasPointerDown(event) {
+    if (event.button !== 0 && event.button !== 1) return;
+    if (event.target.closest('.node') || event.target.closest('.edge-hit')) return;
+    if (connectMode && event.button === 0) {
+      clearSelection();
+      return;
+    }
+
+    const rect = el.canvas.getBoundingClientRect();
+    if (event.button === 0 && event.shiftKey) {
+      interaction = {
+        type: 'marquee',
+        pointerId: event.pointerId,
+        startX: event.clientX - rect.left,
+        startY: event.clientY - rect.top,
+        currentX: event.clientX - rect.left,
+        currentY: event.clientY - rect.top,
+        baseIds: new Set(selectedNodeIds),
+        moved: false
+      };
+      el.selectionMarquee.style.left = interaction.startX + 'px';
+      el.selectionMarquee.style.top = interaction.startY + 'px';
+      el.selectionMarquee.style.width = '0px';
+      el.selectionMarquee.style.height = '0px';
+      el.selectionMarquee.classList.add('visible');
+      el.canvas.classList.add('selecting');
+      el.modeStatus.textContent = 'Zone de sélection';
+      el.canvas.setPointerCapture(event.pointerId);
+      return;
+    }
+
+    clearSelection();
+    interaction = {
+      type: 'pan',
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      viewX: state.view.x,
+      viewY: state.view.y
+    };
+    el.canvas.classList.add('panning');
+    el.canvas.setPointerCapture(event.pointerId);
+  }
+
+  function updateMarquee(currentX, currentY) {
+    if (!interaction || interaction.type !== 'marquee') return;
+    interaction.currentX = currentX;
+    interaction.currentY = currentY;
+    const left = Math.min(interaction.startX, currentX);
+    const top = Math.min(interaction.startY, currentY);
+    const width = Math.abs(currentX - interaction.startX);
+    const height = Math.abs(currentY - interaction.startY);
+    interaction.moved = width + height > 4;
+    el.selectionMarquee.style.left = left + 'px';
+    el.selectionMarquee.style.top = top + 'px';
+    el.selectionMarquee.style.width = width + 'px';
+    el.selectionMarquee.style.height = height + 'px';
+  }
+
+  function finishMarquee() {
+    if (!interaction || interaction.type !== 'marquee') return;
+    const canvasRect = el.canvas.getBoundingClientRect();
+    const left = canvasRect.left + Math.min(interaction.startX, interaction.currentX);
+    const top = canvasRect.top + Math.min(interaction.startY, interaction.currentY);
+    const right = canvasRect.left + Math.max(interaction.startX, interaction.currentX);
+    const bottom = canvasRect.top + Math.max(interaction.startY, interaction.currentY);
+    const ids = new Set(interaction.baseIds);
+    if (interaction.moved) {
+      el.nodes.querySelectorAll('.node').forEach(nodeEl => {
+        if (nodeEl.style.visibility === 'hidden') return;
+        const r = nodeEl.getBoundingClientRect();
+        const intersects = r.right >= left && r.left <= right && r.bottom >= top && r.top <= bottom;
+        if (intersects) ids.add(nodeEl.dataset.nodeId);
+      });
+    }
+    setNodeSelection([...ids]);
+    el.selectionMarquee.classList.remove('visible');
+    el.canvas.classList.remove('selecting');
+    el.modeStatus.textContent = ids.size > 1 ? `${ids.size} étiquettes sélectionnées` : 'Mode déplacement';
+  }
+
+  function onPointerMove(event) {
+    if (connectMode) {
+      previewPoint = screenToWorld(event.clientX, event.clientY);
+      renderEdges();
+    }
+    if (!interaction || interaction.pointerId !== event.pointerId) return;
+    if (interaction.type === 'node-resize') {
+      const node = getNode(interaction.nodeId);
+      if (!node) return;
+      const dx = (event.clientX - interaction.startX) / state.view.scale;
+      const dy = (event.clientY - interaction.startY) / state.view.scale;
+      if (!interaction.moved && Math.abs(dx) + Math.abs(dy) < 2) return;
+      if (!interaction.moved) { pushHistory(); interaction.moved = true; }
+      node.width = clamp(Math.round(interaction.width + dx), 120, 1200);
+      node.height = clamp(Math.round(interaction.height + dy), 72, 2000);
+      const dom = el.nodes.querySelector(`[data-node-id="${CSS.escape(node.id)}"]`);
+      if (dom) { dom.style.width = node.width + 'px'; dom.style.minHeight = node.height + 'px'; }
+      el.nodeSize.value = [170,210,270,340].includes(node.width) ? String(node.width) : 'custom';
+      renderEdges();
+      scheduleSave();
+    } else if (interaction.type === 'pan') {
+      state.view.x = interaction.viewX + event.clientX - interaction.startX;
+      state.view.y = interaction.viewY + event.clientY - interaction.startY;
+      applyView();
+      scheduleSave();
+    } else if (interaction.type === 'marquee') {
+      const rect = el.canvas.getBoundingClientRect();
+      updateMarquee(event.clientX - rect.left, event.clientY - rect.top);
+    } else if (interaction.type === 'nodes-drag') {
+      const dx = (event.clientX - interaction.startX) / state.view.scale;
+      const dy = (event.clientY - interaction.startY) / state.view.scale;
+      if (!interaction.moved && Math.abs(dx) + Math.abs(dy) <= 2) return;
+      if (!interaction.moved) { pushHistory(); interaction.moved = true; }
+      for (const id of interaction.ids) {
+        const node = getNode(id);
+        const start = interaction.positions.get(id);
+        if (!node || !start) continue;
+        node.x = start.x + dx;
+        node.y = start.y + dy;
+        const dom = el.nodes.querySelector(`[data-node-id="${CSS.escape(node.id)}"]`);
+        if (dom) {
+          positionNode(dom, node);
+        }
+      }
+      renderEdges();
+      scheduleSave();
+    }
+  }
+
+  function onPointerUp(event) {
+    if (!interaction || interaction.pointerId !== event.pointerId) return;
+    const finished = interaction;
+    if (finished.type === 'pan') el.canvas.classList.remove('panning');
+    if (finished.type === 'marquee') finishMarquee();
+    if (finished.type === 'nodes-drag') {
+      if (!finished.moved) {
+        if (finished.collapseToSingleOnClick) selectItem('node', finished.anchorId);
+      }
+      el.modeStatus.textContent = selectedNodeIds.size > 1 ? `${selectedNodeIds.size} étiquettes sélectionnées` : 'Mode déplacement';
+    }
+    interaction = null;
+  }
+
+  function onCanvasDoubleClick(event) {
+    if (event.target.closest('.node')) return;
+    const p = screenToWorld(event.clientX, event.clientY);
+    createNode(p.x, p.y, { text: 'Nouvelle idée' });
+  }
+
+  function setZoom(nextScale, anchorClientX, anchorClientY) {
+    if (!Number.isFinite(nextScale)) return;
+    const scale = clamp(nextScale, MIN_ZOOM, MAX_ZOOM);
+    if (scale === state.view.scale) return;
+    const rect = el.canvas.getBoundingClientRect();
+    const ax = anchorClientX ?? (rect.left + rect.width / 2);
+    const ay = anchorClientY ?? (rect.top + rect.height / 2);
+    const world = screenToWorld(ax, ay);
+    state.view.scale = scale;
+    state.view.x = ax - rect.left - world.x * state.view.scale;
+    state.view.y = ay - rect.top - world.y * state.view.scale;
+    applyView();
+    scheduleSave();
+  }
+
+  function onWheel(event) {
+    event.preventDefault();
+    const delta = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? el.canvas.clientHeight : 1);
+    const factor = Math.exp(-clamp(delta, -500, 500) * 0.0012);
+    setZoom(state.view.scale * factor, event.clientX, event.clientY);
+  }
+
+  function fitView() {
+    if (!state.nodes.length) {
+      state.view = { x: 0, y: 0, scale: 1 };
+      applyView();
+      scheduleSave();
+      return;
+    }
+    const bounds = getBounds();
+    const rect = el.canvas.getBoundingClientRect();
+    const padding = Math.min(90, rect.width / 4, rect.height / 4);
+    const scale = clamp(Math.min((rect.width - padding * 2) / bounds.width, (rect.height - padding * 2) / bounds.height), MIN_ZOOM, 1.45);
+    state.view.scale = scale;
+    state.view.x = (rect.width - bounds.width * scale) / 2 - bounds.minX * scale;
+    state.view.y = (rect.height - bounds.height * scale) / 2 - bounds.minY * scale;
+    applyView();
+    scheduleSave();
+  }
+
+  function getBounds() {
+    const visibleNodes = getVisibleNodes();
+    if (!visibleNodes.length) return { minX: 0, minY: 0, maxX: 1, maxY: 1, width: 1, height: 1 };
+    const minX = Math.min(...visibleNodes.map(n => n.x));
+    const minY = Math.min(...visibleNodes.map(n => n.y));
+    const maxX = Math.max(...visibleNodes.map(n => n.x + n.width));
+    const maxY = Math.max(...visibleNodes.map(n => n.y + getNodeHeight(n)));
+    return { minX, minY, maxX, maxY, width: Math.max(1, maxX - minX), height: Math.max(1, maxY - minY) };
+  }
+
+  function onEdgeLabelInput() {
+    const edge = selected?.type === 'edge' ? state.edges.find(item => item.id === selected.id) : null;
+    if (!edge) return;
+    if (!textHistoryTimer) {
+      pushHistory();
+      textHistoryTimer = setTimeout(() => { textHistoryTimer = null; }, 900);
+    }
+    edge.label = el.edgeLabel.value.slice(0, 200);
+    renderEdges();
+    renderSelection();
+    scheduleSave();
+  }
+
+  const textStyles = ['bold', 'italic', 'underline', 'highlight'];
+  const formatPopup = document.getElementById('textFormatPopup');
+  let textSelection = null;
+
+  function mergeRichRuns(runs) {
+    const result = [];
+    for (const run of runs) {
+      if (!run.text) continue;
+      const clean = { text: run.text };
+      for (const key of textStyles) clean[key] = run[key] === true;
+      const last = result[result.length - 1];
+      if (last && textStyles.every(key => last[key] === clean[key])) last.text += clean.text;
+      else result.push(clean);
+    }
+    return result;
+  }
+
+  function sanitizeRichText(runs, text) {
+    if (!Array.isArray(runs) || runs.length > 10000) return [{ text }];
+    const clean = mergeRichRuns(runs.filter(r => r && typeof r.text === 'string'));
+    return clean.map(r => r.text).join('') === text ? clean : [{ text }];
+  }
+
+  function richCharacters(node) {
+    return sanitizeRichText(node.richText, node.text).flatMap(run => run.text.split('').map(text => ({ ...run, text })));
+  }
+
+  function normalizeFontSize(value) {
+    return [12, 14, 16, 18, 20, 24, 28, 32].includes(Number(value)) ? Number(value) : 14;
+  }
+
+  function getPanelTextTarget() {
+    const node = selected?.type === 'node' && selectedNodeIds.size === 1 ? getNode(selected.id) : null;
+    if (!node) return null;
+    const editor = el.nodes.querySelector(`[data-node-id="${CSS.escape(node.id)}"] .node-content`);
+    if (document.activeElement === el.nodeText && el.nodeText.selectionStart < el.nodeText.selectionEnd) {
+      return { node, editor, start: el.nodeText.selectionStart, end: el.nodeText.selectionEnd, source: 'textarea' };
+    }
+    const selection = window.getSelection();
+    if (editor && selection.rangeCount && !selection.isCollapsed) {
+      const range = selection.getRangeAt(0);
+      if (editor.contains(range.startContainer) && editor.contains(range.endContainer)) {
+        const prefix = range.cloneRange();
+        prefix.selectNodeContents(editor); prefix.setEnd(range.startContainer, range.startOffset);
+        const start = prefix.toString().length;
+        return { node, editor, start, end: start + range.toString().length, source: 'node' };
+      }
+    }
+    return { node, editor, start: 0, end: node.text.length, source: 'all' };
+  }
+
+  function updatePanelTextFormats() {
+    const target = getPanelTextTarget();
+    const chars = target ? richCharacters(target.node).slice(target.start, target.end) : [];
+    for (const button of el.panelTextFormats.querySelectorAll('button')) {
+      button.disabled = !chars.length;
+      const key = button.dataset.format;
+      button.setAttribute('aria-pressed', chars.length && chars.every(c => c[key]) ? 'true' : chars.some(c => c[key]) ? 'mixed' : 'false');
+    }
+    el.panelTextScope.textContent = target && target.source !== 'all' ? 'Appliquer au passage sélectionné.' : 'Appliquer à tout le texte.';
+  }
+
+  function applyPanelTextFormat(key) {
+    const target = getPanelTextTarget();
+    if (!target || target.start === target.end || !textStyles.includes(key)) return;
+    if (target.source === 'node') {
+      textSelection = target;
+      applyTextFormat(key);
+      updatePanelTextFormats();
+      return;
+    }
+    const { node, editor, start, end } = target;
+    const chars = richCharacters(node);
+    const enabled = !chars.slice(start, end).every(c => c[key]);
+    clearTimeout(textHistoryTimer); textHistoryTimer = null;
+    pushHistory();
+    chars.slice(start, end).forEach(c => { c[key] = enabled; });
+    node.richText = mergeRichRuns(chars);
+    if (editor) paintRichText(editor, node);
+    renderEdges(); scheduleSave(); updatePanelTextFormats();
+  }
+
+  function changeNodeFontSize() {
+    const node = selected?.type === 'node' && selectedNodeIds.size === 1 ? getNode(selected.id) : null;
+    const size = normalizeFontSize(el.nodeFontSize.value);
+    if (!node || normalizeFontSize(node.fontSize) === size) return;
+    clearTimeout(textHistoryTimer); textHistoryTimer = null;
+    pushHistory(); node.fontSize = size;
+    const editor = el.nodes.querySelector(`[data-node-id="${CSS.escape(node.id)}"] .node-content`);
+    if (editor) editor.style.fontSize = size + 'px';
+    el.nodeText.style.fontSize = size + 'px';
+    renderEdges(); scheduleSave();
+  }
+
+  function paintRichText(target, node) {
+    target.style.fontSize = normalizeFontSize(node.fontSize) + 'px';
+    target.replaceChildren();
+    for (const run of sanitizeRichText(node.richText, node.text)) {
+      const span = document.createElement('span');
+      span.textContent = run.text;
+      span.style.fontWeight = run.bold ? '700' : '400';
+      span.style.fontStyle = run.italic ? 'italic' : 'normal';
+      span.style.textDecoration = run.underline ? 'underline' : 'none';
+      span.style.backgroundColor = run.highlight ? '#fff176' : 'transparent';
+      target.appendChild(span);
+    }
+    target.classList.toggle('empty', !node.text.trim());
+    if (!node.text && !target.isContentEditable) target.textContent = 'Étiquette vide';
+  }
+
+  function syncRichEditor(editor, node) {
+    const runs = [];
+    const walk = element => {
+      if (element.nodeType === Node.TEXT_NODE) {
+        const style = getComputedStyle(element.parentElement);
+        runs.push({ text: element.textContent, bold: Number(style.fontWeight) >= 600,
+          italic: style.fontStyle === 'italic', underline: style.textDecorationLine.includes('underline'),
+          highlight: style.backgroundColor === 'rgb(255, 241, 118)' });
+      } else if (element.nodeName === 'BR') runs.push({ text: '\n' });
+      else {
+        if (['DIV', 'P'].includes(element.nodeName) && element !== editor && runs.length) runs.push({ text: '\n' });
+        element.childNodes.forEach(walk);
+      }
+    };
+    walk(editor);
+    if (!textHistoryTimer) {
+      pushHistory();
+      textHistoryTimer = setTimeout(() => { textHistoryTimer = null; }, 900);
+    }
+    node.richText = mergeRichRuns(runs);
+    node.text = node.richText.map(r => r.text).join('');
+    el.nodeText.value = node.text;
+    editor.classList.toggle('empty', !node.text.trim());
+    updatePanelTextFormats();
+    renderEdges(); scheduleSave();
+  }
+
+  function refreshTextPopup() {
+    updatePanelTextFormats();
+    const selection = window.getSelection();
+    if (!selection.rangeCount || selection.isCollapsed) { formatPopup.hidden = true; textSelection = null; return; }
+    const range = selection.getRangeAt(0);
+    const origin = range.startContainer.nodeType === Node.TEXT_NODE ? range.startContainer.parentElement : range.startContainer;
+    const editor = origin.closest('.node-content.editing');
+    if (!editor || !editor.contains(range.endContainer)) { formatPopup.hidden = true; return; }
+    const prefix = range.cloneRange();
+    prefix.selectNodeContents(editor); prefix.setEnd(range.startContainer, range.startOffset);
+    const start = prefix.toString().length;
+    const node = getNode(editor.closest('.node').dataset.nodeId);
+    textSelection = { editor, node, start, end: start + range.toString().length };
+    const chars = richCharacters(node).slice(textSelection.start, textSelection.end);
+    for (const button of formatPopup.querySelectorAll('button')) button.setAttribute('aria-pressed', String(chars.length > 0 && chars.every(c => c[button.dataset.format])));
+    formatPopup.hidden = false;
+    const rect = range.getBoundingClientRect();
+    formatPopup.style.left = Math.max(8, Math.min(innerWidth - formatPopup.offsetWidth - 8, rect.left + rect.width / 2 - formatPopup.offsetWidth / 2)) + 'px';
+    formatPopup.style.top = Math.max(8, Math.min(innerHeight - formatPopup.offsetHeight - 8, rect.top >= formatPopup.offsetHeight + 8 ? rect.top - formatPopup.offsetHeight - 8 : rect.bottom + 8)) + 'px';
+  }
+
+  function applyTextFormat(key) {
+    if (!textSelection || !textSelection.editor.isConnected || !textStyles.includes(key)) return;
+    const { editor, node, start, end } = textSelection;
+    const chars = richCharacters(node);
+    const enabled = !chars.slice(start, end).every(c => c[key]);
+    clearTimeout(textHistoryTimer); textHistoryTimer = null;
+    pushHistory();
+    chars.slice(start, end).forEach(c => { c[key] = enabled; });
+    node.richText = mergeRichRuns(chars);
+    paintRichText(editor, node);
+    const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT);
+    const range = document.createRange();
+    let offset = 0, foundStart = false, current;
+    while ((current = walker.nextNode())) {
+      const length = current.textContent.length;
+      if (!foundStart && start <= offset + length) { range.setStart(current, start - offset); foundStart = true; }
+      if (end <= offset + length) { range.setEnd(current, end - offset); break; }
+      offset += length;
+    }
+    const selection = window.getSelection(); selection.removeAllRanges(); selection.addRange(range);
+    renderEdges(); scheduleSave(); refreshTextPopup();
+  }
+
+  formatPopup.addEventListener('pointerdown', event => event.preventDefault());
+  formatPopup.addEventListener('click', event => {
+    const button = event.target.closest('button');
+    if (button) applyTextFormat(button.dataset.format);
+  });
+  document.addEventListener('selectionchange', refreshTextPopup);
+  window.addEventListener('resize', () => { formatPopup.hidden = true; });
+  document.addEventListener('scroll', () => { formatPopup.hidden = true; }, true);
+
+  function onNodeTextInput() {
+    const node = selected?.type === 'node' && selectedNodeIds.size === 1 ? getNode(selected.id) : null;
+    if (!node) return;
+    if (!textHistoryTimer) {
+      pushHistory();
+      textHistoryTimer = setTimeout(() => { textHistoryTimer = null; }, 900);
+    }
+    const oldText = node.text;
+    const newText = el.nodeText.value;
+    // Preserve formatting outside the changed passage in the plain-text inspector.
+    const chars = richCharacters(node);
+    let start = 0, end = 0;
+    while (start < oldText.length && start < newText.length && oldText[start] === newText[start]) start++;
+    while (end < oldText.length - start && end < newText.length - start && oldText[oldText.length - 1 - end] === newText[newText.length - 1 - end]) end++;
+    const inserted = newText.slice(start, newText.length - end).split('').map(text => ({ ...(chars[start - 1] || {}), text }));
+    node.richText = mergeRichRuns([...chars.slice(0, start), ...inserted, ...(end ? chars.slice(-end) : [])]);
+    node.text = newText;
+    const dom = el.nodes.querySelector(`[data-node-id="${CSS.escape(node.id)}"] .node-content`);
+    if (dom) {
+      paintRichText(dom, node);
+      dom.classList.toggle('empty', !node.text.trim());
+    }
+    renderEdges();
+    scheduleSave();
+  }
+
+  function changeNodeColor(color) {
+    const node = selected?.type === 'node' && selectedNodeIds.size === 1 ? getNode(selected.id) : null;
+    if (!node || node.color === color) return;
+    pushHistory();
+    node.color = color;
+    renderNodes();
+    renderEdges();
+    renderSelection();
+    updateInspector();
+    scheduleSave();
+  }
+
+  function changeNodeSize(width) {
+    const node = selected?.type === 'node' && selectedNodeIds.size === 1 ? getNode(selected.id) : null;
+    width = Number(width);
+    if (!node || !Number.isFinite(width) || node.width === width) return;
+    pushHistory();
+    node.width = width;
+    renderNodes();
+    renderEdges();
+    renderSelection();
+    scheduleSave();
+  }
+
+  function readImageFile(file) {
+    if (!file || !file.type.startsWith('image/')) {
+      showToast('Veuillez choisir un fichier image.');
+      return;
+    }
+    const maxBytes = 12 * 1024 * 1024;
+    if (file.size > maxBytes) {
+      showToast('Image trop volumineuse : maximum 12 Mo.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const node = selected?.type === 'node' && selectedNodeIds.size === 1 ? getNode(selected.id) : null;
+      if (!node) return;
+      compressImage(reader.result, 1400, .88).then(dataUrl => {
+        pushHistory();
+        node.image = dataUrl;
+        renderAll();
+        scheduleSave();
+      }).catch(() => showToast('Impossible de traiter cette image.'));
+    };
+    reader.onerror = () => showToast('Impossible de lire cette image.');
+    reader.readAsDataURL(file);
+  }
+
+  function compressImage(dataUrl, maxDimension, quality) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        let width = img.naturalWidth;
+        let height = img.naturalHeight;
+        const scale = Math.min(1, maxDimension / Math.max(width, height));
+        width = Math.max(1, Math.round(width * scale));
+        height = Math.max(1, Math.round(height * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = reject;
+      img.src = dataUrl;
+    });
+  }
+
+  function removeImage() {
+    const node = selected?.type === 'node' && selectedNodeIds.size === 1 ? getNode(selected.id) : null;
+    if (!node || !node.image) return;
+    pushHistory();
+    node.image = '';
+    renderAll();
+    scheduleSave();
+  }
+
+  function exportJson() {
+    const payload = cloneData(state);
+    payload.updatedAt = new Date().toISOString();
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    downloadBlob(blob, safeFilename(state.title || 'carte-mentale') + '.mindmap.json');
+    showToast('Carte enregistrée dans un fichier.');
+  }
+
+  function importJsonFile(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const imported = sanitizeImported(JSON.parse(reader.result));
+        pushHistory();
+        state = imported;
+        selected = null;
+        selectedNodeIds.clear();
+        stopConnectMode();
+        renderAll();
+        scheduleSave();
+        fitView();
+        showToast('Carte ouverte avec succès.');
+      } catch (error) {
+        console.error(error);
+        showToast('Ce fichier ne contient pas une carte valide.');
+      }
+      el.importInput.value = '';
+    };
+    reader.onerror = () => showToast('Impossible de lire ce fichier.');
+    reader.readAsText(file);
+  }
+
+  function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function safeFilename(name) {
+    return (name || 'carte-mentale')
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-zA-Z0-9-_ ]/g, '')
+      .trim().replace(/\s+/g, '-')
+      .slice(0, 80) || 'carte-mentale';
+  }
+
+  async function exportPng() {
+    if (!state.nodes.length) {
+      showToast('Ajoutez au moins une étiquette avant l’export.');
+      return;
+    }
+    el.pngBtn.disabled = true;
+    el.pngBtn.querySelector('.desktop-label')?.replaceChildren(document.createTextNode('Export…'));
+    try {
+      // Wait for intrinsic sizes before measuring the nodes and export bounds.
+      await Promise.all([...el.nodes.querySelectorAll('.node-image')].map(img => img.decode().catch(() => {})));
+      const bounds = getBounds();
+      const padding = 80;
+      const exportWidth = bounds.width + padding * 2;
+      const exportHeight = bounds.height + padding * 2;
+      if (!Number.isFinite(exportWidth) || !Number.isFinite(exportHeight)) throw new Error('Dimensions de carte non valides');
+      const maxDimension = 4096;
+      const scale = Math.min(2, Math.max(1, 1800 / Math.max(bounds.width, bounds.height)), maxDimension / exportWidth, maxDimension / exportHeight);
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.min(maxDimension, Math.ceil(exportWidth * scale)));
+      canvas.height = Math.max(1, Math.min(maxDimension, Math.ceil(exportHeight * scale)));
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Canvas indisponible');
+      ctx.fillStyle = '#f7f9fb';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.save();
+      ctx.scale(scale, scale);
+      ctx.translate(padding - bounds.minX, padding - bounds.minY);
+
+      const hidden = getHiddenNodeIds();
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 2.25;
+      for (const edge of state.edges) {
+        if (hidden.has(edge.source) || hidden.has(edge.target)) continue;
+        const source = getNode(edge.source);
+        const target = getNode(edge.target);
+        if (!source || !target) continue;
+        const { p1, p2, c1, c2 } = edgeGeometry(source, target);
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y);
+        ctx.bezierCurveTo(c1.x, c1.y, c2.x, c2.y, p2.x, p2.y);
+        ctx.stroke();
+        if (edge.label && edge.label.trim()) {
+          const mid = cubicPoint(p1, c1, c2, p2);
+          drawEdgeLabelToCanvas(ctx, edge.label.trim(), mid.x, mid.y);
+        }
+      }
+
+      for (const node of getVisibleNodes()) await drawNodeToCanvas(ctx, node);
+      ctx.restore();
+
+      const blob = await new Promise((resolve, reject) => {
+        canvas.toBlob(result => result ? resolve(result) : reject(new Error('PNG indisponible')), 'image/png');
+      });
+      downloadBlob(blob, safeFilename(state.title || 'carte-mentale') + '.png');
+      showToast('Image PNG exportée.');
+    } catch (error) {
+      console.error(error);
+      showToast('L’export PNG a échoué.');
+    } finally {
+      el.pngBtn.disabled = false;
+      const label = el.pngBtn.querySelector('.desktop-label');
+      if (label) label.textContent = 'PNG';
+    }
+  }
+
+  function drawEdgeLabelToCanvas(ctx, label, x, y) {
+    ctx.save();
+    ctx.font = '700 12px "Segoe UI", Arial, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const width = Math.min(260, ctx.measureText(label).width + 14);
+    const height = 24;
+    roundedRect(ctx, x - width / 2, y - height / 2, width, height, 7);
+    ctx.fillStyle = 'rgba(255,255,255,.65)';
+    ctx.fill();
+    ctx.fillStyle = '#475569';
+    const shown = label.length > 42 ? label.slice(0, 41) + '…' : label;
+    ctx.fillText(shown, x, y + .5, width - 10);
+    ctx.restore();
+  }
+
+  function fitNodeImage(naturalWidth, naturalHeight, nodeWidth) {
+    const boxWidth = Math.max(1, nodeWidth - 2);
+    const boxHeight = boxWidth * naturalHeight / naturalWidth;
+    return { boxWidth, boxHeight, width: boxWidth, height: boxHeight };
+  }
+
+  async function drawNodeToCanvas(ctx, node) {
+    const height = getNodeHeight(node);
+    roundedRect(ctx, node.x, node.y, node.width, height, 14);
+    ctx.fillStyle = node.color;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(34,48,68,.20)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    let contentY = node.y;
+    if (node.image) {
+      try {
+        const img = await loadImage(node.image);
+        const fitted = fitNodeImage(img.naturalWidth, img.naturalHeight, node.width);
+        ctx.save();
+        roundedRect(ctx, node.x, node.y, node.width, height, 14);
+        ctx.clip();
+        ctx.fillStyle = '#e7ebf0';
+        ctx.fillRect(node.x + 1, node.y + 1, fitted.boxWidth, fitted.boxHeight);
+        ctx.drawImage(img, node.x + (node.width - fitted.width) / 2, node.y + 1 + (fitted.boxHeight - fitted.height) / 2, fitted.width, fitted.height);
+        ctx.restore();
+        contentY += fitted.boxHeight;
+      } catch (_) {}
+    }
+
+    ctx.fillStyle = node.text.trim() ? '#1d2733' : '#8a96a6';
+    if (node.eventTitle || node.eventAt) {
+      ctx.fillStyle = '#1d2733';
+      ctx.font = '700 12px "Segoe UI", Arial, sans-serif';
+      ctx.textBaseline = 'top';
+      ctx.fillText(node.eventTitle || 'Événement sans titre', node.x + 15, contentY + 9, node.width - 30);
+      ctx.fillStyle = '#667085';
+      ctx.font = '400 10px "Segoe UI", Arial, sans-serif';
+      ctx.fillText(node.eventAt ? formatEventAt(node.eventAt) : 'Date à renseigner', node.x + 15, contentY + 26, node.width - 30);
+      contentY += 44;
+    }
+    ctx.font = '650 14px "Segoe UI", Arial, sans-serif';
+    ctx.textBaseline = 'top';
+    drawRichText(ctx, node, node.x + 15, contentY + 13, node.width - 30, normalizeFontSize(node.fontSize) * 1.36);
+  }
+
+  function drawRichText(ctx, node, x, y, maxWidth, lineHeight) {
+    const chars = richCharacters(node.text ? node : { text: 'Étiquette vide' });
+    const fontSize = normalizeFontSize(node.fontSize);
+    const font = c => `${c.italic ? 'italic ' : ''}${c.bold ? 700 : 400} ${fontSize}px "Segoe UI", Arial, sans-serif`;
+    let dx = 0, dy = 0;
+    for (let i = 0; i < chars.length; i++) {
+      const c = chars[i];
+      if (c.text === '\n') { dx = 0; dy += lineHeight; continue; }
+      // Move a whole word to the next line when it fits there.
+      if (!/\s/.test(c.text) && (i === 0 || /\s/.test(chars[i - 1].text))) {
+        let wordWidth = 0;
+        for (let j = i; j < chars.length && !/\s/.test(chars[j].text); j++) {
+          ctx.font = font(chars[j]); wordWidth += ctx.measureText(chars[j].text).width;
+        }
+        if (dx && wordWidth <= maxWidth && dx + wordWidth > maxWidth) { dx = 0; dy += lineHeight; }
+      }
+      ctx.font = font(c);
+      const width = ctx.measureText(c.text).width;
+      if (dx && dx + width > maxWidth) { dx = 0; dy += lineHeight; }
+      if (c.highlight) {
+        ctx.fillStyle = '#fff176'; ctx.fillRect(x + dx, y + dy, width, lineHeight);
+      }
+      ctx.fillStyle = node.text ? '#1d2733' : '#8a96a6';
+      ctx.fillText(c.text, x + dx, y + dy);
+      if (c.underline) ctx.fillRect(x + dx, y + dy + fontSize * 1.08, width, Math.max(1, fontSize / 14));
+      dx += width;
+    }
+  }
+
+  function roundedRect(ctx, x, y, w, h, r) {
+    const rr = Math.min(r, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + rr, y);
+    ctx.arcTo(x + w, y, x + w, y + h, rr);
+    ctx.arcTo(x + w, y + h, x, y + h, rr);
+    ctx.arcTo(x, y + h, x, y, rr);
+    ctx.arcTo(x, y, x + w, y, rr);
+    ctx.closePath();
+  }
+
+  function drawWrappedText(ctx, text, x, y, maxWidth, lineHeight) {
+    const paragraphs = text.split('\n');
+    let offsetY = 0;
+    for (const paragraph of paragraphs) {
+      const words = paragraph.split(/\s+/).filter(Boolean);
+      if (!words.length) { offsetY += lineHeight; continue; }
+      let line = '';
+      for (const word of words) {
+        const test = line ? line + ' ' + word : word;
+        if (ctx.measureText(test).width > maxWidth && line) {
+          ctx.fillText(line, x, y + offsetY);
+          offsetY += lineHeight;
+          line = word;
+        } else {
+          line = test;
+        }
+      }
+      ctx.fillText(line, x, y + offsetY);
+      offsetY += lineHeight;
+    }
+  }
+
+  function loadImage(src) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = src;
+    });
+  }
+
+  function resetMap() {
+    pushHistory();
+    state = createEmptyState();
+    selected = null;
+    selectedNodeIds.clear();
+    stopConnectMode();
+    renderAll();
+    saveLocal();
+    el.newModal.classList.remove('open');
+    showToast('Nouvelle carte créée.');
+  }
+
+  function showToast(message) {
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.textContent = message;
+    el.toastStack.appendChild(toast);
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateY(5px)';
+      toast.style.transition = 'opacity .2s, transform .2s';
+      setTimeout(() => toast.remove(), 220);
+    }, 2500);
+  }
+
+  function isTypingTarget(target) {
+    return target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement || target.isContentEditable;
+  }
+
+  function onKeyDown(event) {
+    // Let the modal handle text input, Enter, Escape and its own focus loop.
+    if (el.eventDialog.open) return;
+    if (event.target.closest('.timeline') && ['+', '=', '-', '0'].includes(event.key)) {
+      event.preventDefault();
+      setTimelineZoom(event.key === '0' ? 1 : normalizeTimelineZoom(state.timelineZoom) * (event.key === '-' ? .8 : 1.25));
+      return;
+    }
+    if (event.key === 'Escape' && !el.timelinePreview.hidden) {
+      hideTimelinePreview(); event.preventDefault(); return;
+    }
+    const typing = isTypingTarget(event.target);
+    const ctrl = event.ctrlKey || event.metaKey;
+
+    if (ctrl && event.target.closest('.node-content.editing') && ['b', 'i', 'u'].includes(event.key.toLowerCase())) {
+      event.preventDefault();
+      refreshTextPopup();
+      if (!formatPopup.hidden) applyTextFormat({ b: 'bold', i: 'italic', u: 'underline' }[event.key.toLowerCase()]);
+      return;
+    }
+
+    if (ctrl && event.key.toLowerCase() === 's') {
+      event.preventDefault();
+      exportJson();
+      return;
+    }
+    if (ctrl && event.key.toLowerCase() === 'z') {
+      event.preventDefault();
+      event.shiftKey ? redo() : undo();
+      return;
+    }
+    if (ctrl && event.key.toLowerCase() === 'y') {
+      event.preventDefault();
+      redo();
+      return;
+    }
+    if (ctrl && event.key === 'Enter') {
+      event.preventDefault();
+      addChild();
+      return;
+    }
+    if (ctrl && event.key.toLowerCase() === 'a' && !typing) {
+      event.preventDefault();
+      setNodeSelection(getVisibleNodes().map(node => node.id));
+      el.modeStatus.textContent = `${selectedNodeIds.size} étiquettes sélectionnées`;
+      return;
+    }
+    if (typing) return;
+
+    if (event.key === 'Delete' || event.key === 'Backspace') {
+      event.preventDefault();
+      deleteSelection();
+    } else if (event.key.toLowerCase() === 'n') {
+      event.preventDefault();
+      addNodeAtCenter();
+    } else if (event.key.toLowerCase() === 'r') {
+      event.preventDefault();
+      toggleConnectMode();
+    } else if (event.key.toLowerCase() === 'f') {
+      event.preventDefault();
+      fitView();
+    } else if (event.key === 'Escape') {
+      stopConnectMode();
+      clearSelection();
+      el.newModal.classList.remove('open');
+    } else if (event.key === '+' || event.key === '=') {
+      setZoom(state.view.scale * 1.15);
+    } else if (event.key === '-') {
+      setZoom(state.view.scale / 1.15);
+    }
+  }
+
+  el.canvas.addEventListener('pointerdown', onCanvasPointerDown);
+  el.canvas.addEventListener('pointermove', onPointerMove);
+  el.canvas.addEventListener('pointerup', onPointerUp);
+  el.canvas.addEventListener('pointercancel', onPointerUp);
+  el.canvas.addEventListener('dblclick', onCanvasDoubleClick);
+  el.canvas.addEventListener('wheel', onWheel, { passive: false });
+  el.canvas.addEventListener('dragover', event => {
+    if (selected?.type === 'node' && selectedNodeIds.size === 1) {
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'copy';
+    }
+  });
+  el.canvas.addEventListener('drop', event => {
+    if (selected?.type !== 'node' || selectedNodeIds.size !== 1) return;
+    event.preventDefault();
+    const file = [...event.dataTransfer.files].find(f => f.type.startsWith('image/'));
+    if (file) readImageFile(file);
+  });
+
+  el.addNodeBtn.addEventListener('click', addNodeAtCenter);
+  el.addChildBtn.addEventListener('click', addChild);
+  el.panelAddChildBtn.addEventListener('click', addChild);
+  el.connectBtn.addEventListener('click', toggleConnectMode);
+  el.deleteBtn.addEventListener('click', deleteSelection);
+  el.undoBtn.addEventListener('click', undo);
+  el.redoBtn.addEventListener('click', redo);
+  el.newBtn.addEventListener('click', () => el.newModal.classList.add('open'));
+  el.cancelNewBtn.addEventListener('click', () => el.newModal.classList.remove('open'));
+  el.confirmNewBtn.addEventListener('click', resetMap);
+  el.newModal.addEventListener('click', event => {
+    if (event.target === el.newModal) el.newModal.classList.remove('open');
+  });
+  el.importBtn.addEventListener('click', () => el.importInput.click());
+  el.importInput.addEventListener('change', () => importJsonFile(el.importInput.files[0]));
+  el.exportBtn.addEventListener('click', exportJson);
+  el.pngBtn.addEventListener('click', exportPng);
+  el.fitBtn.addEventListener('click', fitView);
+  el.zoomInBtn.addEventListener('click', () => setZoom(state.view.scale * 1.15));
+  el.zoomOutBtn.addEventListener('click', () => setZoom(state.view.scale / 1.15));
+  el.zoomValue.addEventListener('click', () => setZoom(1));
+  el.inspectorToggle.addEventListener('click', () => {
+    const open = el.inspector.classList.toggle('mobile-open');
+    el.inspectorToggle.setAttribute('aria-expanded', String(open));
+    el.inspectorToggle.title = open ? 'Masquer les propriétés' : 'Afficher les propriétés';
+    el.inspectorToggle.classList.toggle('active', open);
+  });
+  el.nodeText.addEventListener('input', onNodeTextInput);
+  el.nodeText.addEventListener('input', updatePanelTextFormats);
+  el.nodeText.addEventListener('select', updatePanelTextFormats);
+  el.nodeFontSize.addEventListener('change', changeNodeFontSize);
+  el.panelTextFormats.addEventListener('pointerdown', event => {
+    if (event.target.closest('button')) event.preventDefault();
+  });
+  el.panelTextFormats.addEventListener('click', event => {
+    const button = event.target.closest('button');
+    if (button) applyPanelTextFormat(button.dataset.format);
+  });
+  el.panelTextFormats.addEventListener('focusin', updatePanelTextFormats);
+  el.nodeEventTitle.addEventListener('input', changeNodeEvent);
+  el.nodeEventAt.addEventListener('input', changeNodeEvent);
+  el.removeEventBtn.addEventListener('click', () => {
+    const node = selected?.type === 'node' && selectedNodeIds.size === 1 ? getNode(selected.id) : null;
+    if (!node || !node.eventAt) return;
+    pushHistory(); node.eventAt = '';
+    renderAll(); scheduleSave();
+  });
+  document.getElementById('addEventBtn').addEventListener('click', () => {
+    hideTimelinePreview();
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    document.getElementById('eventTitle').value = '';
+    document.getElementById('eventTitle').setCustomValidity('');
+    document.getElementById('eventAt').value = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    el.eventDialog.showModal();
+  });
+  document.getElementById('cancelEventBtn').addEventListener('click', () => el.eventDialog.close());
+  document.getElementById('eventTitle').addEventListener('input', event => event.target.setCustomValidity(''));
+  document.getElementById('eventForm').addEventListener('submit', event => {
+    event.preventDefault();
+    const titleInput = document.getElementById('eventTitle');
+    const title = titleInput.value.trim();
+    const at = normalizeEventAt(document.getElementById('eventAt').value);
+    if (!title) { titleInput.setCustomValidity('Saisissez un titre.'); titleInput.reportValidity(); return; }
+    if (!at) return;
+    el.eventDialog.close();
+    stopConnectMode();
+    const center = centerWorldPoint();
+    const node = createNode(center.x, center.y, { eventTitle: title, eventAt: at, focusText: false });
+    focusTimelineNode(node.id);
+    el.timelineTrack.querySelector(`[data-node-id="${CSS.escape(node.id)}"]`)?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  });
+  el.timelinePreview.addEventListener('mouseenter', () => clearTimeout(previewHideTimer));
+  el.timelinePreview.addEventListener('mouseleave', deferHideTimelinePreview);
+  el.timelineScroll.addEventListener('scroll', hideTimelinePreview);
+  el.timelineZoomOut.addEventListener('click', () => setTimelineZoom(normalizeTimelineZoom(state.timelineZoom) * .8));
+  el.timelineZoomIn.addEventListener('click', () => setTimelineZoom(normalizeTimelineZoom(state.timelineZoom) * 1.25));
+  el.timelineZoomReset.addEventListener('click', () => setTimelineZoom(1));
+  el.timelineScroll.closest('.timeline').addEventListener('wheel', event => {
+    if (event.deltaY === 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const delta = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? el.timelineScroll.clientHeight : 1);
+    setTimelineZoom(normalizeTimelineZoom(state.timelineZoom) * Math.exp(-clamp(delta, -500, 500) * .002), event.clientX);
+  }, { passive: false });
+  window.addEventListener('resize', hideTimelinePreview);
+  new ResizeObserver(() => applyTimelineZoom()).observe(el.timelineScroll);
+  el.edgeLabel.addEventListener('input', onEdgeLabelInput);
+  el.nodeSize.addEventListener('change', () => changeNodeSize(el.nodeSize.value));
+  el.chooseImageBtn.addEventListener('click', () => el.imageInput.click());
+  el.imageInput.addEventListener('change', () => {
+    readImageFile(el.imageInput.files[0]);
+    el.imageInput.value = '';
+  });
+  el.removeImageBtn.addEventListener('click', removeImage);
+  document.addEventListener('keydown', onKeyDown);
+  new ResizeObserver(() => applyView()).observe(el.canvas);
+  window.addEventListener('beforeunload', saveLocal);
+
+  loadLocal();
+  renderAll();
+  if (!state.nodes.length) {
+    const rect = el.canvas.getBoundingClientRect();
+    state.view.x = rect.width / 2;
+    state.view.y = rect.height / 2;
+    applyView();
+  }
+})();
+</script>
+</body>
+</html>
