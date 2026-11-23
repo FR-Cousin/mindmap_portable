@@ -77,6 +77,7 @@
     .brand-subtitle { font-size: 11px; color: var(--muted); margin-top: 2px; }
 
     .tool-group { display: flex; align-items: center; gap: 5px; }
+    .view-controls { flex-wrap: wrap; max-width: 100%; }
     .tool-separator { width: 1px; height: 28px; background: var(--border); margin: 0 3px; }
 
     .tool-button {
@@ -163,9 +164,9 @@
       cursor: grab;
       touch-action: none;
     }
-    .canvas-wrap.panning { cursor: grabbing; }
     .canvas-wrap.connecting { cursor: crosshair; }
     .canvas-wrap.selecting { cursor: crosshair; }
+    .canvas-wrap.panning, .canvas-wrap.panning * { cursor: grabbing !important; }
 
     .selection-marquee {
       position: absolute;
@@ -210,6 +211,10 @@
       vector-effect: non-scaling-stroke;
       pointer-events: none;
     }
+    .edge-visible { stroke-linecap: round; stroke-linejoin: round; }
+    .edge-attachment { fill: #94a3b8; stroke: white; stroke-width: 1; vector-effect: non-scaling-stroke; pointer-events: none; }
+    .edge-group.related .edge-attachment { fill: #6b89c5; }
+    .edge-group.selected .edge-attachment { fill: var(--accent); }
     .edge-hit {
       fill: none;
       stroke: transparent;
@@ -222,7 +227,7 @@
     .edge-group.selected .edge-visible { stroke: var(--accent); stroke-width: 3.2; }
     .edge-group.connect-preview .edge-visible { stroke: var(--accent); stroke-dasharray: 7 7; }
     .edge-label-bg {
-      fill: rgba(255,255,255,.65);
+      fill: #f7f9fb;
       stroke: none;
       vector-effect: non-scaling-stroke;
       pointer-events: none;
@@ -256,6 +261,7 @@
       pointer-events: auto;
     }
     .node:hover { box-shadow: 0 8px 22px rgba(25, 39, 58, .14); }
+    .node[hidden], .canvas-wrap.exploring .branch-toggle { display: none; }
     .node-resize-handle {
       position: absolute;
       right: 0;
@@ -276,6 +282,7 @@
       border-color: rgba(36,87,214,.38);
       box-shadow: 0 5px 18px rgba(36,87,214,.12);
     }
+    .node.dimmed { opacity: .5; }
     .node.selected {
       outline: 3px solid rgba(36,87,214,.28);
       border-color: var(--accent);
@@ -309,6 +316,9 @@
     .node-content.empty { color: #8a96a6; font-weight: 550; }
     .node-content.editing { pointer-events: auto; user-select: text; cursor: text; outline: 2px solid var(--accent); border-radius: 12px; touch-action: auto; }
     .node-content { font-weight: 400; }
+    .text-checkbox { display: inline-block; cursor: pointer; pointer-events: auto; user-select: none; color: var(--accent); border-radius: 3px; }
+    .text-checkbox:hover { background: var(--accent-soft); }
+    .text-checkbox:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     .text-format-popup { position: fixed; z-index: 150; display: flex; gap: 4px; padding: 5px; background: white; border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow); }
     .text-format-popup[hidden] { display: none; }
     .text-format-popup button { width: 38px; height: 36px; border: 0; border-radius: 6px; background: #f0f3f7; cursor: pointer; }
@@ -622,6 +632,62 @@
       .inspector.mobile-open { transform: translateX(0); visibility: visible; }
       .toast-stack { right: 12px; }
     }
+    #timelineCount { margin-left: 7px; font-size: 11px; font-weight: 400; color: var(--muted); }
+    .timeline-scroll { transition: height .16s ease; }
+    .timeline-content { position: relative; min-width: 100%; }
+    .timeline-track { display: block; width: 100%; min-width: 0; height: 98px; }
+    .timeline-track::before { left: var(--timeline-inset, 80px); right: var(--timeline-inset, 80px); }
+    .timeline-track li:not(.timeline-empty) { position: absolute; top: 4px; height: 86px; transform: translateX(-50%); }
+    .timeline-event { padding: 0 3px; text-align: center; }
+    .timeline-event time { font-size: 11px; }
+    .timeline-event strong { font-size: 12px; font-weight: 600; }
+    .timeline-dot { justify-self: center; width: 8px; height: 8px; }
+    .timeline-empty { position: absolute; bottom: 8px; left: 0; }
+    .timeline-periods { position: relative; width: 100%; }
+    .timeline-period {
+      position: absolute; height: 18px; padding: 0 9px; border: 1px solid rgba(87,108,143,.19);
+      border-radius: 5px; color: #52627a; background: var(--period-color, #eaf0ff);
+      font-family: inherit; font-size: 11px; font-weight: 500; line-height: 16px;
+      text-align: left; cursor: pointer; overflow: hidden; white-space: nowrap;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .timeline-period span { display: block; overflow: hidden; text-overflow: ellipsis; }
+    .timeline-period[hidden] { display: none; }
+    .timeline-period.short-period { padding: 0; }
+    .timeline-period.short-period span { visibility: hidden; }
+    .timeline-period:hover { border-color: #899ab6; box-shadow: 0 1px 4px rgba(34,48,68,.10); }
+    .timeline-period[aria-current="true"] { border-color: #7089b4; box-shadow: 0 0 0 1px rgba(79,110,164,.17); color: #354d72; }
+    .timeline-period:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .timeline-more-periods { margin: 0 0 4px 8px; padding: 2px 6px; border: 0; background: transparent; color: #667085; font: inherit; font-size: 11px; cursor: pointer; }
+    .timeline-more-periods:hover { color: var(--accent); }
+    .timeline-more-periods[hidden] { display: none; }
+    .period-toggle { display: flex; align-items: center; gap: 7px; margin: -3px 0 15px; font-size: 12px; font-weight: 600; cursor: pointer; }
+    #nodeEventKind { width: 15px; height: 15px; margin: 0; accent-color: var(--accent); }
+    #nodeEventEndField[hidden] { display: none; }
+    #nodeEventEndAt:invalid { border-color: #c74f4f; }
+    .period-editor-hint { margin: 6px 0 0; line-height: 1.45; }
+    @media (prefers-reduced-motion: reduce) { .timeline-scroll, .timeline-period { transition: none; } }
+
+    .panel-text-formats { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 4px; }
+    .panel-text-formats button { padding: 0; min-width: 0; display: grid; place-items: center; }
+    .text-format-popup button { width: 32px; display: grid; place-items: center; }
+    .panel-text-formats svg, .text-format-popup svg { width: 18px; height: 18px; }
+    .text-size-icon { font-size: 16px; font-weight: 650; letter-spacing: -1px; }
+    .text-size-icon span { font-size: 11px; }
+    .panel-text-formats button[aria-expanded="true"], .text-format-popup button[aria-expanded="true"] { background: var(--accent-soft); color: var(--accent); outline: 1px solid var(--accent); }
+    .panel-text-formats button[aria-pressed="mixed"] { background: linear-gradient(135deg, white 50%, var(--accent-soft) 50%); border-color: #aebff1; }
+    .font-size-menu { position: fixed; z-index: 160; width: 232px; max-width: calc(100vw - 16px); padding: 12px; display: grid; gap: 8px; background: white; border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); font-size: 12px; }
+    .font-size-menu[hidden] { display: none; }
+    .font-size-menu button { min-height: 30px; border: 1px solid var(--border); border-radius: 7px; background: white; cursor: pointer; color: var(--text); }
+    .font-size-menu button:hover { background: #f0f3f7; }
+    .font-size-menu button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+    .font-size-menu button:disabled { opacity: .4; cursor: default; }
+    .font-size-menu button:focus-visible, [data-text-size]:focus-visible, [data-fit-content]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .font-size-stepper { display: grid; grid-template-columns: 32px 1fr 32px; gap: 6px; }
+    .font-size-stepper > button { font-size: 19px; }
+    .font-size-stepper label { display: flex; align-items: center; gap: 4px; color: var(--muted); }
+    .font-size-stepper input { padding: 5px 4px; text-align: center; min-width: 0; height: 32px; }
+    .font-size-presets { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
   </style>
 </head>
 <body>
@@ -687,7 +753,14 @@
 
     <div class="toolbar-spacer"></div>
 
-    <div class="tool-group">
+    <div class="tool-group view-controls">
+      <button type="button" class="tool-button" id="explorationBtn" aria-pressed="false" aria-controls="nodesLayer edgesSvg" title="Afficher seulement l’étiquette choisie, ses liens et ses voisines directes">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><circle cx="12" cy="12" r="3"/><circle cx="4" cy="5" r="2"/><circle cx="20" cy="5" r="2"/><circle cx="12" cy="21" r="2"/><path d="m6 7 4 3m4 0 4-3m-6 8v4"/></svg>
+        <span>Exploration</span>
+      </button>
+      <button type="button" class="tool-button" id="autoArrangeBtn" aria-label="Réorganiser la carte" title="Réorganiser : les plus connectées au centre · Ctrl+Z pour annuler">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 5V3m0 18v-2M5 12H3m18 0h-2M7 7 5 5m14 14-2-2M7 17l-2 2M19 5l-2 2"/><path d="m10 4 2-2 2 2m6 6 2 2-2 2M14 20l-2 2-2-2M4 14l-2-2 2-2"/></svg>
+      </button>
       <button class="tool-button" id="fitBtn" title="Cadrer toute la carte (F)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/></svg>
       </button>
@@ -719,7 +792,11 @@
       </div>
     </div>
     <div class="timeline-scroll" id="timelineScroll" tabindex="0" aria-label="Événements : molette ou touches + et − pour zoomer, 0 pour tout voir">
-      <ol class="timeline-track" id="timelineTrack" aria-label="Événements dans l’ordre chronologique"></ol>
+      <div class="timeline-content" id="timelineContent">
+        <ol class="timeline-track" id="timelineTrack" aria-label="Événements ponctuels dans l’ordre chronologique"></ol>
+        <div class="timeline-periods" id="timelinePeriods" role="group" aria-label="Périodes sous la chronologie"></div>
+        <button type="button" class="timeline-more-periods" id="timelineMorePeriods" aria-expanded="false" hidden></button>
+      </div>
     </div>
   </section>
 
@@ -748,16 +825,21 @@
 
       <div id="nodeInspector" hidden>
         <div class="event-fields">
-          <h3>Événement sur la frise</h3>
+          <h3>Sur la chronologie</h3>
           <div class="field">
-            <label class="field-label" for="nodeEventTitle">Titre de l’événement</label>
+            <label class="field-label" for="nodeEventTitle">Titre</label>
             <input class="event-title-input" id="nodeEventTitle" type="text" maxlength="160" placeholder="Ex. Premier rendez-vous" />
           </div>
           <div class="field">
-            <label class="field-label" for="nodeEventAt">Date et heure</label>
+            <label class="field-label" for="nodeEventAt" id="nodeEventAtLabel">Date et heure</label>
             <input id="nodeEventAt" type="datetime-local" min="0001-01-01T00:00" max="9999-12-31T23:59" step="60" />
-            <p class="field-hint">Le titre et la date ajoutent automatiquement l’étiquette à la frise. Heure locale, conservée telle que saisie.</p>
           </div>
+          <label class="period-toggle" for="nodeEventKind"><input id="nodeEventKind" type="checkbox" aria-controls="nodeEventEndField" /> Période</label>
+          <div class="field" id="nodeEventEndField" hidden>
+            <label class="field-label" for="nodeEventEndAt">Fin</label>
+            <input id="nodeEventEndAt" type="datetime-local" min="0001-01-01T00:00" max="9999-12-31T23:59" step="60" />
+          </div>
+          <p class="field-hint period-editor-hint" id="nodeEventHint">Le point apparaît sur la frise.</p>
           <button type="button" class="panel-button" id="removeEventBtn">Retirer de la frise</button>
         </div>
         <div class="field">
@@ -771,20 +853,13 @@
             <button type="button" class="panel-button" data-format="bold" title="Gras" aria-label="Gras" aria-pressed="false"><b>G</b></button>
             <button type="button" class="panel-button" data-format="italic" title="Italique" aria-label="Italique" aria-pressed="false"><i>I</i></button>
             <button type="button" class="panel-button" data-format="underline" title="Souligné" aria-label="Souligné" aria-pressed="false"><u>S</u></button>
+            <button type="button" class="panel-button" data-format="strike" title="Barré" aria-label="Barré" aria-pressed="false"><s>B</s></button>
             <button type="button" class="panel-button" data-format="highlight" title="Surlignage" aria-label="Surlignage" aria-pressed="false"><mark>A</mark></button>
+            <button type="button" class="panel-button" data-format="checkbox" title="Ajouter ou retirer des cases à cocher sur les lignes" aria-label="Cases à cocher" aria-pressed="false">☑</button>
+  <button type="button" class="panel-button" data-text-size title="Taille du texte" aria-label="Taille du texte" aria-haspopup="dialog" aria-controls="fontSizeMenu" aria-expanded="false"><span aria-hidden="true" class="text-size-icon">A<span>a</span></span></button>
+  <button type="button" class="panel-button" data-fit-content title="Ajuster l’étiquette à tout son contenu" aria-label="Ajuster au contenu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5M4 4l5 5m11-5-5 5M4 20l5-5m11 5-5-5"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg></button>
           </div>
           <p class="field-hint" id="panelTextScope">Appliquer à tout le texte.</p>
-          <label class="field-label" for="nodeFontSize">Taille du texte de l’étiquette</label>
-          <select id="nodeFontSize">
-            <option value="12">Petite — 12 px</option>
-            <option value="14">Normale — 14 px</option>
-            <option value="16">Moyenne — 16 px</option>
-            <option value="18">Grande — 18 px</option>
-            <option value="20">Très grande — 20 px</option>
-            <option value="24">24 px</option>
-            <option value="28">28 px</option>
-            <option value="32">32 px</option>
-          </select>
         </div>
 
         <div class="field">
@@ -800,17 +875,6 @@
         <div class="field">
           <div class="field-label">Couleur</div>
           <div class="color-row" id="colorRow"></div>
-        </div>
-
-        <div class="field">
-          <label class="field-label" for="nodeSize">Largeur</label>
-          <select id="nodeSize">
-            <option value="custom" disabled>Personnalisée (poignée)</option>
-            <option value="170">Petite</option>
-            <option value="210">Moyenne</option>
-            <option value="270">Grande</option>
-            <option value="340">Très grande</option>
-          </select>
         </div>
 
         <div class="field">
@@ -838,6 +902,7 @@
         <div class="shortcut-row"><span>Sélection multiple</span><kbd>Maj + clic</kbd></div>
         <div class="shortcut-row" title="Sélectionner l’étiquette et ses voisines directement reliées, dans les deux sens, puis glisser pour déplacer le groupe."><span>Voisines directes</span><kbd>Ctrl + Alt + clic</kbd></div>
         <div class="shortcut-row"><span>Zone de sélection</span><kbd>Maj + glisser</kbd></div>
+        <div class="shortcut-row" title="Déplacer la vue depuis n’importe où, même sur une étiquette ou un lien."><span>Déplacer la vue</span><kbd>Molette + glisser</kbd></div>
         <div class="shortcut-row"><span>Déplacer une branche</span><kbd>Alt + glisser</kbd></div>
         <div class="shortcut-row"><span>Supprimer</span><kbd>Suppr</kbd></div>
         <div class="shortcut-row"><span>Enregistrer</span><kbd>Ctrl + S</kbd></div>
@@ -879,7 +944,33 @@
   <button type="button" data-format="bold" title="Gras (Ctrl+B)" aria-label="Gras" aria-pressed="false"><b>G</b></button>
   <button type="button" data-format="italic" title="Italique (Ctrl+I)" aria-label="Italique" aria-pressed="false"><i>I</i></button>
   <button type="button" data-format="underline" title="Souligné (Ctrl+U)" aria-label="Souligné" aria-pressed="false"><u>S</u></button>
+  <button type="button" data-format="strike" title="Barré" aria-label="Barré" aria-pressed="false"><s>B</s></button>
   <button type="button" data-format="highlight" title="Surligner" aria-label="Surligner" aria-pressed="false"><mark>A</mark></button>
+  <button type="button" data-format="checkbox" title="Ajouter ou retirer des cases à cocher sur les lignes" aria-label="Cases à cocher" aria-pressed="false">☑</button>
+  <button type="button" data-text-size title="Taille du texte" aria-label="Taille du texte" aria-haspopup="dialog" aria-controls="fontSizeMenu" aria-expanded="false"><span aria-hidden="true" class="text-size-icon">A<span>a</span></span></button>
+  <button type="button" data-fit-content title="Ajuster l’étiquette à tout son contenu" aria-label="Ajuster au contenu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5M4 4l5 5m11-5-5 5M4 20l5-5m11 5-5-5"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg></button>
+</div>
+
+<div class="font-size-menu" id="fontSizeMenu" role="dialog" aria-labelledby="fontSizeTitle" hidden>
+  <strong id="fontSizeTitle">Taille du texte</strong>
+  <span class="field-hint" id="fontSizeScope">Tout le texte de l’étiquette</span>
+  <div class="font-size-stepper">
+    <button type="button" id="fontSizeMinus" aria-label="Réduire le texte" title="Réduire de 1 px">−</button>
+    <label><input id="fontSizeValue" type="number" min="8" max="72" step="1" aria-label="Taille du texte en pixels" /><span>px</span></label>
+    <button type="button" id="fontSizePlus" aria-label="Agrandir le texte" title="Agrandir de 1 px">+</button>
+  </div>
+  <div class="font-size-presets" role="group" aria-label="Tailles proposées">
+    <button type="button" data-size="12" aria-label="12 pixels" aria-pressed="false">12</button>
+    <button type="button" data-size="14" aria-label="14 pixels" aria-pressed="false">14</button>
+    <button type="button" data-size="16" aria-label="16 pixels" aria-pressed="false">16</button>
+    <button type="button" data-size="18" aria-label="18 pixels" aria-pressed="false">18</button>
+    <button type="button" data-size="20" aria-label="20 pixels" aria-pressed="false">20</button>
+    <button type="button" data-size="24" aria-label="24 pixels" aria-pressed="false">24</button>
+    <button type="button" data-size="28" aria-label="28 pixels" aria-pressed="false">28</button>
+    <button type="button" data-size="32" aria-label="32 pixels" aria-pressed="false">32</button>
+    <button type="button" data-size="40" aria-label="40 pixels" aria-pressed="false">40</button>
+    <button type="button" data-size="48" aria-label="48 pixels" aria-pressed="false">48</button>
+  </div>
 </div>
 
 <div class="modal-backdrop" id="newModal">
@@ -900,6 +991,7 @@
   'use strict';
 
   const STORAGE_KEY = 'mindmap-portable-v1';
+  let periodsExpanded = false;
   const NODE_COLORS = ['#ffffff', '#eaf0ff', '#e9f8ef', '#fff4d9', '#ffe9e7', '#f3ebff', '#e8f7fa', '#f3f4f6', '#fff0f6', '#ecf8df'];
   // Numerical safety only: the canvas has no fixed world dimensions.
   const MIN_ZOOM = 1e-12;
@@ -922,13 +1014,11 @@
     inspectorTitle: document.getElementById('inspectorTitle'),
     inspectorSubtitle: document.getElementById('inspectorSubtitle'),
     nodeText: document.getElementById('nodeText'),
-    nodeFontSize: document.getElementById('nodeFontSize'),
     panelTextFormats: document.getElementById('panelTextFormats'),
     panelTextScope: document.getElementById('panelTextScope'),
     imagePreview: document.getElementById('imagePreview'),
     imageInput: document.getElementById('imageInput'),
     colorRow: document.getElementById('colorRow'),
-    nodeSize: document.getElementById('nodeSize'),
     nodeEventTitle: document.getElementById('nodeEventTitle'),
     nodeEventAt: document.getElementById('nodeEventAt'),
     removeEventBtn: document.getElementById('removeEventBtn'),
@@ -950,6 +1040,7 @@
     importBtn: document.getElementById('importBtn'),
     exportBtn: document.getElementById('exportBtn'),
     pngBtn: document.getElementById('pngBtn'),
+    explorationBtn: document.getElementById('explorationBtn'),
     fitBtn: document.getElementById('fitBtn'),
     zoomInBtn: document.getElementById('zoomInBtn'),
     zoomOutBtn: document.getElementById('zoomOutBtn'),
@@ -971,6 +1062,9 @@
   let state = createEmptyState();
   let selected = null;
   let selectedNodeIds = new Set();
+  // Exploration is a view-only mode; it never changes the saved graph.
+  let explorationMode = false;
+  let explorationNodeId = null;
   let connectMode = false;
   let connectSourceId = null;
   let previewPoint = null;
@@ -1062,6 +1156,8 @@
       fontSize: normalizeFontSize(n.fontSize),
       eventTitle: typeof n.eventTitle === 'string' ? n.eventTitle.trim().slice(0, 160) : '',
       eventAt: normalizeEventAt(n.eventAt),
+      eventKind: n.eventKind === 'period' ? 'period' : 'instant',
+      eventEndAt: normalizeEventAt(n.eventEndAt),
       richText: sanitizeRichText(n.richText, typeof n.text === 'string' ? n.text.slice(0, 10000) : ''),
       image: typeof n.image === 'string' && n.image.startsWith('data:image/') ? n.image : '',
       color: NODE_COLORS.includes(n.color) ? n.color : '#ffffff',
@@ -1158,6 +1254,8 @@
       fontSize: normalizeFontSize(options.fontSize),
       eventTitle: typeof options.eventTitle === 'string' ? options.eventTitle.trim().slice(0, 160) : '',
       eventAt: normalizeEventAt(options.eventAt),
+      eventKind: options.eventKind === 'period' ? 'period' : 'instant',
+      eventEndAt: normalizeEventAt(options.eventEndAt),
       image: '',
       color: options.color || '#ffffff',
       collapsed: false
@@ -1242,8 +1340,58 @@
   }
 
   function getVisibleNodes() {
+    const neighborhood = getExplorationNeighborhood();
+    if (neighborhood) return state.nodes.filter(node => neighborhood.nodeIds.has(node.id));
     const hidden = getHiddenNodeIds();
     return state.nodes.filter(node => !hidden.has(node.id));
+  }
+
+  function getExplorationNeighborhood() {
+    // Show the map while connecting so a new destination can still be chosen.
+    if (!explorationMode || connectMode || !getNode(explorationNodeId)) return null;
+    return getDirectNeighborhood(explorationNodeId);
+  }
+
+  function getVisibleEdges() {
+    const visibleIds = new Set(getVisibleNodes().map(node => node.id));
+    const neighborhood = getExplorationNeighborhood();
+    return state.edges.filter(edge => visibleIds.has(edge.source) && visibleIds.has(edge.target)
+      && (!neighborhood || neighborhood.edgeIds.has(edge.id)));
+  }
+
+  function applyNodeVisibility() {
+    const visibleIds = new Set(getVisibleNodes().map(node => node.id));
+    el.canvas.classList.toggle('exploring', Boolean(getExplorationNeighborhood()));
+    for (const nodeEl of el.nodes.children) nodeEl.hidden = !visibleIds.has(nodeEl.dataset.nodeId);
+  }
+
+  function refreshExploration() {
+    // Keep the clicked DOM node in place for dragging, double-click and focus.
+    applyNodeVisibility();
+    renderEdges();
+    updateButtons();
+    updateStatus();
+  }
+
+  function toggleExplorationMode() {
+    if (connectMode) stopConnectMode();
+    explorationMode = !explorationMode;
+    explorationNodeId = explorationMode && selected?.type === 'node' ? selected.id : null;
+    if (explorationNodeId) {
+      selectItem('node', explorationNodeId);
+    } else {
+      // Returning to the map restores folded branches and their visibility.
+      const visibleIds = new Set(getVisibleNodes().map(node => node.id));
+      selectedNodeIds = new Set([...selectedNodeIds].filter(id => visibleIds.has(id)));
+      if (selected?.type === 'node' && !selectedNodeIds.has(selected.id)) {
+        const id = [...selectedNodeIds].at(-1);
+        selected = id ? { type: 'node', id } : null;
+      }
+      if (selected?.type === 'edge' && !getVisibleEdges().some(edge => edge.id === selected.id)) selected = null;
+      refreshExploration();
+      updateInspector();
+    }
+    if (explorationMode) showToast('Exploration : cliquez sur une étiquette pour naviguer, ou sur le fond pour retrouver toute la carte.');
   }
 
   function toggleBranch(nodeId) {
@@ -1296,12 +1444,13 @@
     if (type === 'node' && id) {
       selectedNodeIds = new Set([id]);
       selected = { type, id };
+      if (explorationMode) explorationNodeId = id;
     } else {
       selectedNodeIds.clear();
       selected = id ? { type, id } : null;
     }
     if (connectMode && type === 'node' && id) handleConnectClick(id);
-    renderSelection();
+    if (explorationMode) refreshExploration(); else renderSelection();
     updateInspector();
     updateButtons();
     updateStatus();
@@ -1327,7 +1476,8 @@
   }
 
   function setNodeSelection(ids, primaryId = null) {
-    selectedNodeIds = new Set(ids.filter(id => getNode(id)));
+    const visibleIds = explorationMode ? new Set(getVisibleNodes().map(node => node.id)) : null;
+    selectedNodeIds = new Set(ids.filter(id => getNode(id) && (!visibleIds || visibleIds.has(id))));
     const primary = primaryId && selectedNodeIds.has(primaryId) ? primaryId : [...selectedNodeIds].at(-1);
     selected = primary ? { type: 'node', id: primary } : null;
     renderSelection();
@@ -1354,7 +1504,7 @@
     el.connectBtn.classList.add('active');
     el.canvas.classList.add('connecting');
     el.modeStatus.textContent = connectSourceId ? 'Choisissez l’étiquette d’arrivée' : 'Choisissez l’étiquette de départ';
-    renderSelection();
+    if (explorationMode) refreshExploration(); else renderSelection();
   }
 
   function stopConnectMode() {
@@ -1364,8 +1514,11 @@
     el.connectBtn.classList.remove('active');
     el.canvas.classList.remove('connecting');
     el.modeStatus.textContent = 'Mode déplacement';
+    if (explorationMode) applyNodeVisibility();
     renderEdges();
     renderSelection();
+    updateButtons();
+    updateStatus();
   }
 
   function toggleConnectMode() {
@@ -1399,6 +1552,172 @@
     renderAll();
   }
 
+  function isPeriod(node) { return node.eventKind === 'period'; }
+
+  function validPeriod(node) {
+    return Boolean(normalizeEventAt(node.eventAt) && normalizeEventAt(node.eventEndAt) && node.eventEndAt > node.eventAt);
+  }
+
+  function nextEventDay(value) {
+    if (!normalizeEventAt(value)) return '';
+    const end = new Date(value + ':00Z'); end.setUTCDate(end.getUTCDate() + 1);
+    return normalizeEventAt(end.toISOString().slice(0, 16));
+  }
+
+  function eventDateLabel(node, full = false) {
+    if (!node.eventAt) return isPeriod(node) ? 'Période à renseigner' : 'Date à renseigner';
+    if (!isPeriod(node)) return formatEventAt(node.eventAt);
+    if (!validPeriod(node)) return 'Fin de période à renseigner';
+    if (full) return `Du ${formatEventAt(node.eventAt)} au ${formatEventAt(node.eventEndAt)}`;
+    const date = value => new Intl.DateTimeFormat('fr-FR', { day: '2-digit', month: 'short', timeZone: 'UTC' }).format(new Date(value + ':00Z'));
+    const sameYear = node.eventAt.slice(0, 4) === node.eventEndAt.slice(0, 4);
+    return `${date(node.eventAt)}${sameYear ? '' : ' ' + node.eventAt.slice(0, 4)} → ${date(node.eventEndAt)} ${node.eventEndAt.slice(0, 4)}`;
+  }
+
+  function timelineNodes() {
+    return state.nodes.filter(node => node.eventTitle?.trim() && normalizeEventAt(node.eventAt) && (!isPeriod(node) || validPeriod(node)))
+      .slice().sort((a, b) => a.eventAt.localeCompare(b.eventAt) || a.eventTitle.localeCompare(b.eventTitle, 'fr'));
+  }
+
+  function applyTimelineZoom(anchorClientX) {
+    const scroll = el.timelineScroll;
+    if (!scroll.clientWidth) return;
+    const { zoom, maximum } = timelineZoomLayout(timelineNodes().length, scroll.clientWidth, state.timelineZoom);
+    const anchor = anchorClientX == null ? scroll.clientWidth / 2 : clamp(anchorClientX - scroll.getBoundingClientRect().left, 0, scroll.clientWidth);
+    const oldAnchor = anchorClientX == null && timelineViewportWidth ? timelineViewportWidth / 2 : anchor;
+    const position = (scroll.scrollLeft + oldAnchor) / (timelineItemWidth || scroll.clientWidth);
+    state.timelineZoom = zoom;
+    timelineViewportWidth = scroll.clientWidth;
+    timelineItemWidth = Math.floor(scroll.clientWidth * zoom * 64) / 64;
+    document.getElementById('timelineContent').style.width = timelineItemWidth + 'px';
+    el.timelineTrack.style.setProperty('--timeline-zoom', '1');
+    el.timelineZoomReset.textContent = `${Math.round(zoom * 100)} %`;
+    el.timelineZoomReset.setAttribute('aria-label', `Zoom de la chronologie : ${Math.round(zoom * 100)} %. Afficher toute la frise`);
+    el.timelineZoomOut.disabled = zoom <= 1;
+    el.timelineZoomIn.disabled = zoom >= maximum;
+    scroll.classList.remove('unit-view');
+    layoutTimelinePeriods(timelineItemWidth);
+    scroll.scrollLeft = zoom === 1 ? 0 : Math.max(0, position * timelineItemWidth - anchor);
+    hideTimelinePreview();
+  }
+
+  function layoutTimelinePeriods(width) {
+    const nodes = timelineNodes(), instants = nodes.filter(node => !isPeriod(node));
+    const periods = nodes.filter(isPeriod);
+    const periodTrack = document.getElementById('timelinePeriods');
+    const more = document.getElementById('timelineMorePeriods');
+    if (!nodes.length) { periodTrack.style.height = '0px'; more.hidden = true; el.timelineScroll.style.height = '116px'; return; }
+    const stamp = value => new Date(value + ':00Z').getTime();
+    const dates = nodes.flatMap(node => isPeriod(node) ? [stamp(node.eventAt), stamp(node.eventEndAt)] : [stamp(node.eventAt)]);
+    const first = Math.min(...dates), last = Math.max(...dates);
+    const inset = Math.min(96, Math.max(26, width * .065));
+    const x = value => first === last ? width / 2 : inset + (stamp(value) - first) / (last - first) * (width - inset * 2);
+    el.timelineTrack.style.setProperty('--timeline-inset', inset + 'px');
+    for (let i = 0; i < instants.length; i++) {
+      const node = instants[i], left = x(node.eventAt);
+      const before = i ? left - x(instants[i - 1].eventAt) : inset * 2;
+      const after = i + 1 < instants.length ? x(instants[i + 1].eventAt) - left : inset * 2;
+      const item = el.timelineTrack.querySelector(`[data-node-id="${CSS.escape(node.id)}"]`)?.parentElement;
+      if (item) { item.style.left = left + 'px'; item.style.width = Math.max(34, Math.min(178, Math.min(before, after) * 1.8 - 8)) + 'px'; }
+    }
+    const laneEnds = [];
+    const placed = periods.slice().sort((a, b) => a.eventAt.localeCompare(b.eventAt) || b.eventEndAt.localeCompare(a.eventEndAt))
+      .map(node => {
+        const left = x(node.eventAt), right = x(node.eventEndAt);
+        let lane = laneEnds.findIndex(end => end + 8 <= left);
+        if (lane < 0) lane = laneEnds.length;
+        laneEnds[lane] = Math.max(right, left + 6);
+        return { node, left, right, lane };
+      });
+    let hidden = 0;
+    for (const item of placed) {
+      const button = periodTrack.querySelector(`[data-node-id="${CSS.escape(item.node.id)}"]`);
+      if (!button) continue;
+      button.hidden = !periodsExpanded && item.lane >= 3;
+      if (button.hidden) hidden++;
+      button.style.left = item.left + 'px'; button.style.top = item.lane * 24 + 'px';
+      button.style.width = Math.max(6, item.right - item.left) + 'px';
+      button.classList.toggle('short-period', item.right - item.left < 50);
+    }
+    const lanes = periodsExpanded ? laneEnds.length : Math.min(3, laneEnds.length);
+    periodTrack.style.height = (lanes ? lanes * 24 + 2 : 0) + 'px';
+    more.hidden = laneEnds.length <= 3;
+    more.textContent = periodsExpanded ? 'Réduire les périodes' : `+ ${hidden} période${hidden > 1 ? 's' : ''}`;
+    more.setAttribute('aria-expanded', String(periodsExpanded));
+    el.timelineScroll.style.height = (116 + (lanes ? lanes * 24 + 2 : 0) + (more.hidden ? 0 : 24)) + 'px';
+  }
+
+  function bindTimelineEntry(button, node) {
+    button.dataset.nodeId = node.id;
+    button.setAttribute('aria-current', String(selectedNodeIds.has(node.id)));
+    button.setAttribute('aria-label', `${node.eventTitle}. ${eventDateLabel(node, true)}`);
+    button.addEventListener('mouseenter', () => showTimelinePreview(button));
+    button.addEventListener('mouseleave', deferHideTimelinePreview);
+    button.addEventListener('focus', () => showTimelinePreview(button));
+    button.addEventListener('blur', hideTimelinePreview);
+    button.addEventListener('click', () => focusTimelineNode(node.id));
+  }
+
+  function renderTimeline() {
+    hideTimelinePreview();
+    const focusedId = document.activeElement?.closest('.timeline-event, .timeline-period')?.dataset.nodeId;
+    const nodes = timelineNodes(), instants = nodes.filter(node => !isPeriod(node)), periods = nodes.filter(isPeriod);
+    el.timelineCount.textContent = nodes.length ? `${instants.length} événement${instants.length > 1 ? 's' : ''}${periods.length ? ` · ${periods.length} période${periods.length > 1 ? 's' : ''}` : ''}` : '';
+    const fragment = document.createDocumentFragment();
+    if (!nodes.length) {
+      const empty = document.createElement('li'); empty.className = 'timeline-empty';
+      empty.textContent = 'Ajoutez une date ou une période dans les propriétés d’une étiquette.';
+      fragment.appendChild(empty);
+    }
+    for (const node of instants) {
+      const item = document.createElement('li');
+      const button = document.createElement('button'); button.type = 'button'; button.className = 'timeline-event';
+      const time = document.createElement('time'); time.dateTime = node.eventAt;
+      time.textContent = new Intl.DateTimeFormat('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }).format(new Date(node.eventAt + ':00Z'));
+      const dot = document.createElement('span'); dot.className = 'timeline-dot'; dot.setAttribute('aria-hidden', 'true');
+      const title = document.createElement('strong'); title.textContent = node.eventTitle;
+      button.append(time, dot, title); bindTimelineEntry(button, node); item.appendChild(button); fragment.appendChild(item);
+    }
+    el.timelineTrack.replaceChildren(fragment);
+    const periodFragment = document.createDocumentFragment();
+    for (const node of periods) {
+      const button = document.createElement('button'); button.type = 'button'; button.className = 'timeline-period';
+      button.style.setProperty('--period-color', node.color === '#ffffff' ? '#eaf0ff' : node.color);
+      const text = document.createElement('span'); text.textContent = node.eventTitle; button.appendChild(text);
+      bindTimelineEntry(button, node); periodFragment.appendChild(button);
+    }
+    document.getElementById('timelinePeriods').replaceChildren(periodFragment);
+    applyTimelineZoom();
+    if (focusedId) el.timelineScroll.querySelector(`[data-node-id="${CSS.escape(focusedId)}"]`)?.focus({ preventScroll: true });
+  }
+
+  function changeNodeEvent() {
+    const node = selected?.type === 'node' && selectedNodeIds.size === 1 ? getNode(selected.id) : null;
+    if (!node) return;
+    const endInput = document.getElementById('nodeEventEndAt');
+    const title = el.nodeEventTitle.value.trim().slice(0, 160), date = normalizeEventAt(el.nodeEventAt.value);
+    const end = normalizeEventAt(endInput.value);
+    endInput.setCustomValidity(isPeriod(node) && date && end && end <= date ? 'La fin doit être postérieure au début.' : '');
+    if (!el.nodeEventAt.validity.valid || (el.nodeEventAt.value && !date) || (isPeriod(node) && (!endInput.validity.valid || (endInput.value && !end)))) return;
+    if (title === (node.eventTitle || '') && date === (node.eventAt || '') && (!isPeriod(node) || end === (node.eventEndAt || ''))) return;
+    if (!eventHistoryTimer || eventHistoryNodeId !== node.id) pushHistory();
+    clearTimeout(eventHistoryTimer); eventHistoryNodeId = node.id;
+    eventHistoryTimer = setTimeout(() => { eventHistoryTimer = null; }, 900);
+    node.eventTitle = title; node.eventAt = date;
+    if (isPeriod(node)) node.eventEndAt = end;
+    renderAll(); scheduleSave();
+  }
+
+  function changeNodeEventKind() {
+    const node = selected?.type === 'node' && selectedNodeIds.size === 1 ? getNode(selected.id) : null;
+    if (!node) return;
+    pushHistory(); node.eventKind = document.getElementById('nodeEventKind').checked ? 'period' : 'instant';
+    if (isPeriod(node) && !validPeriod(node)) node.eventEndAt = nextEventDay(node.eventAt);
+    document.getElementById('nodeEventEndAt').setCustomValidity('');
+    renderAll(); scheduleSave();
+  }
+
+
   function normalizeTimelineZoom(value) {
     return typeof value === 'number' && Number.isFinite(value) ? Math.max(1, value) : 1;
   }
@@ -1409,29 +1728,6 @@
     // Round down to a browser layout subpixel so the full view never overflows.
     const itemWidth = Math.floor(viewportWidth / maximum * zoom * 64) / 64;
     return { zoom, maximum, itemWidth };
-  }
-
-  function applyTimelineZoom(anchorClientX) {
-    const scroll = el.timelineScroll;
-    if (!scroll.clientWidth) return;
-    const { zoom, maximum, itemWidth } = timelineZoomLayout(timelineNodes().length, scroll.clientWidth, state.timelineZoom);
-    const anchor = anchorClientX == null ? scroll.clientWidth / 2 : clamp(anchorClientX - scroll.getBoundingClientRect().left, 0, scroll.clientWidth);
-    const oldAnchor = anchorClientX == null && timelineViewportWidth ? timelineViewportWidth / 2 : anchor;
-    const point = (scroll.scrollLeft + oldAnchor) / (timelineItemWidth || itemWidth || 1);
-    state.timelineZoom = zoom;
-    timelineItemWidth = itemWidth;
-    timelineViewportWidth = scroll.clientWidth;
-    el.timelineTrack.style.setProperty('--timeline-item-width', `${itemWidth}px`);
-    el.timelineTrack.style.setProperty('--timeline-zoom', String(itemWidth / 188));
-    el.timelineZoomReset.textContent = `${Math.round(zoom * 100)} %`;
-    el.timelineZoomReset.setAttribute('aria-label', `Zoom de la chronologie : ${Math.round(zoom * 100)} %. Afficher tous les événements`);
-    el.timelineZoomOut.disabled = zoom <= 1;
-    el.timelineZoomIn.disabled = zoom >= maximum;
-    scroll.classList.toggle('unit-view', zoom === maximum && maximum > 1);
-    scroll.scrollLeft = zoom === 1 ? 0 : zoom === maximum
-      ? clamp(Math.floor(point), 0, maximum - 1) * itemWidth
-      : Math.max(0, point * itemWidth - anchor);
-    hideTimelinePreview();
   }
 
   function setTimelineZoom(next, anchorClientX) {
@@ -1457,11 +1753,6 @@
     }).format(new Date(value + ':00Z'));
   }
 
-  function timelineNodes() {
-    return state.nodes.filter(node => node.eventTitle?.trim() && normalizeEventAt(node.eventAt))
-      .slice().sort((a, b) => a.eventAt.localeCompare(b.eventAt) || a.eventTitle.localeCompare(b.eventTitle, 'fr'));
-  }
-
   function hideTimelinePreview() {
     clearTimeout(previewHideTimer);
     el.timelinePreview.hidden = true;
@@ -1483,7 +1774,7 @@
     const preview = el.timelinePreview;
     preview.replaceChildren();
     const title = document.createElement('h3'); title.textContent = node.eventTitle;
-    const time = document.createElement('time'); time.dateTime = node.eventAt; time.textContent = formatEventAt(node.eventAt);
+    const time = document.createElement('time'); time.dateTime = node.eventAt; time.textContent = eventDateLabel(node, true);
     preview.append(title, time);
     if (node.image) {
       const image = document.createElement('img'); image.src = node.image; image.alt = '';
@@ -1496,39 +1787,6 @@
     const rect = button.getBoundingClientRect();
     preview.style.left = Math.max(12, Math.min(innerWidth - preview.offsetWidth - 12, rect.left)) + 'px';
     preview.style.top = Math.max(12, Math.min(innerHeight - preview.offsetHeight - 12, rect.bottom + 6)) + 'px';
-  }
-
-  function renderTimeline() {
-    hideTimelinePreview();
-    const focusedId = document.activeElement?.closest('.timeline-event')?.dataset.nodeId;
-    const nodes = timelineNodes();
-    el.timelineCount.textContent = nodes.length ? `(${nodes.length})` : '';
-    const fragment = document.createDocumentFragment();
-    if (!nodes.length) {
-      const empty = document.createElement('li'); empty.className = 'timeline-empty';
-      empty.style.flexBasis = 'auto'; empty.style.width = 'auto';
-      empty.textContent = 'Ajoutez un événement ou renseignez le titre et la date d’une étiquette.';
-      fragment.appendChild(empty);
-    }
-    for (const node of nodes) {
-      const item = document.createElement('li');
-      const button = document.createElement('button');
-      button.type = 'button'; button.className = 'timeline-event'; button.dataset.nodeId = node.id;
-      button.setAttribute('aria-current', String(selectedNodeIds.has(node.id)));
-      const time = document.createElement('time'); time.dateTime = node.eventAt; time.textContent = formatEventAt(node.eventAt);
-      const dot = document.createElement('span'); dot.className = 'timeline-dot'; dot.setAttribute('aria-hidden', 'true');
-      const title = document.createElement('strong'); title.textContent = node.eventTitle;
-      button.append(time, dot, title);
-      button.addEventListener('mouseenter', () => showTimelinePreview(button));
-      button.addEventListener('mouseleave', deferHideTimelinePreview);
-      button.addEventListener('focus', () => showTimelinePreview(button));
-      button.addEventListener('blur', hideTimelinePreview);
-      button.addEventListener('click', () => focusTimelineNode(node.id));
-      item.appendChild(button); fragment.appendChild(item);
-    }
-    el.timelineTrack.replaceChildren(fragment);
-    applyTimelineZoom();
-    if (focusedId) el.timelineTrack.querySelector(`[data-node-id="${CSS.escape(focusedId)}"]`)?.focus({ preventScroll: true });
   }
 
   function focusTimelineNode(id) {
@@ -1552,7 +1810,7 @@
         if (!visited.has(edge.source)) { visited.add(edge.source); pending.push(edge.source); }
       }
     }
-    const folded = state.nodes.filter(n => ancestors.has(n.id) && n.collapsed);
+    const folded = explorationMode ? [] : state.nodes.filter(n => ancestors.has(n.id) && n.collapsed);
     if (folded.length) { pushHistory(); folded.forEach(n => { n.collapsed = false; }); }
     renderNodes(); renderEdges(); selectItem('node', id);
     const rect = el.canvas.getBoundingClientRect();
@@ -1564,22 +1822,9 @@
     el.nodes.querySelector(`[data-node-id="${CSS.escape(id)}"]`)?.focus({ preventScroll: true });
   }
 
-  function changeNodeEvent() {
-    const node = selected?.type === 'node' && selectedNodeIds.size === 1 ? getNode(selected.id) : null;
-    if (!node) return;
-    const title = el.nodeEventTitle.value.trim().slice(0, 160);
-    const date = normalizeEventAt(el.nodeEventAt.value);
-    if (!el.nodeEventAt.validity.valid || (el.nodeEventAt.value && !date)) return;
-    if (title === (node.eventTitle || '') && date === (node.eventAt || '')) return;
-    if (!eventHistoryTimer || eventHistoryNodeId !== node.id) pushHistory();
-    clearTimeout(eventHistoryTimer);
-    eventHistoryNodeId = node.id;
-    eventHistoryTimer = setTimeout(() => { eventHistoryTimer = null; }, 900);
-    node.eventTitle = title; node.eventAt = date;
-    renderAll(); scheduleSave();
-  }
-
   function renderAll() {
+    closeFontSizeMenu();
+    formatPopup.hidden = true; textSelection = null;
     renderNodes();
     applyView();
     renderTimeline();
@@ -1623,7 +1868,7 @@
 
   function renderNodes() {
     const fragment = document.createDocumentFragment();
-    for (const node of getVisibleNodes()) {
+    for (const node of state.nodes) {
       const div = document.createElement('div');
       div.className = 'node';
       div.dataset.nodeId = node.id;
@@ -1634,7 +1879,7 @@
       div.tabIndex = 0;
       div.setAttribute('role', 'button');
       div.setAttribute('aria-label', [node.eventTitle, node.text].filter(Boolean).join(' : ') || 'Étiquette vide');
-      div.title = 'Glisser : déplacer · Ctrl + Alt + clic : sélectionner les voisines directes'
+      div.title = 'Glisser : déplacer · Molette + glisser : déplacer la vue · Ctrl + Alt + clic : sélectionner les voisines directes'
         + (getDirectChildren(node.id).length ? ' · Alt + glisser : déplacer toute la branche' : '');
 
       if (node.image) {
@@ -1655,13 +1900,27 @@
         heading.appendChild(title);
         const date = document.createElement('time');
         date.dateTime = node.eventAt || '';
-        date.textContent = node.eventAt ? formatEventAt(node.eventAt) : 'Date à renseigner';
+        date.textContent = eventDateLabel(node);
         heading.appendChild(date);
         div.appendChild(heading);
       }
       content.className = 'node-content' + (node.text.trim() ? '' : ' empty');
       paintRichText(content, node);
       content.addEventListener('input', () => syncRichEditor(content, node));
+      content.addEventListener('pointerdown', event => {
+        if (event.target.closest('.text-checkbox')) {
+          event.preventDefault(); event.stopPropagation();
+        }
+      });
+      content.addEventListener('click', event => {
+        const checkbox = event.target.closest('.text-checkbox');
+        if (checkbox) {
+          event.stopPropagation(); toggleTextCheckbox(checkbox, content, node);
+        }
+      });
+      content.addEventListener('dblclick', event => {
+        if (event.target.closest('.text-checkbox')) event.stopPropagation();
+      });
       content.addEventListener('paste', event => {
         event.preventDefault();
         document.execCommand('insertText', false, event.clipboardData.getData('text/plain'));
@@ -1671,16 +1930,24 @@
         if (content.isContentEditable) document.execCommand('insertText', false, event.dataTransfer.getData('text/plain'));
       });
       content.addEventListener('keydown', event => {
+        const checkbox = event.target.closest('.text-checkbox');
+        if (checkbox && (event.key === ' ' || event.key === 'Enter')) {
+          event.preventDefault(); event.stopPropagation();
+          toggleTextCheckbox(checkbox, content, node); return;
+        }
         if (!content.isContentEditable) return;
         if (event.key === 'Escape') { content.blur(); return; }
         if (event.key === 'Enter' && !event.ctrlKey && !event.metaKey) {
           event.preventDefault(); document.execCommand('insertText', false, '\n');
         }
       });
-      content.addEventListener('blur', () => {
+      content.addEventListener('focusout', event => {
+        if (content.contains(event.relatedTarget) || event.relatedTarget?.closest('#fontSizeMenu, #textFormatPopup')) return;
         content.contentEditable = 'false';
         content.classList.remove('editing');
         document.getElementById('textFormatPopup').hidden = true;
+        textSelection = null;
+        paintRichText(content, node);
       });
       div.appendChild(content);
 
@@ -1758,6 +2025,7 @@
       fragment.appendChild(div);
     }
     el.nodes.replaceChildren(fragment);
+    applyNodeVisibility();
   }
 
   function nodeAnchor(node, towardNode) {
@@ -1777,8 +2045,8 @@
 
   function getNodeHeight(node) {
     const dom = el.nodes.querySelector(`[data-node-id="${CSS.escape(node.id)}"]`);
-    if (dom) return dom.offsetHeight;
-    const fontSize = normalizeFontSize(node.fontSize);
+    if (dom && !dom.hidden) return dom.offsetHeight;
+    const fontSize = Math.max(normalizeFontSize(node.fontSize), ...sanitizeRichText(node.richText, node.text).map(run => run.fontSize || 0));
     const textLines = Math.max(1, Math.ceil((node.text.length || 12) / Math.max(1, (node.width - 30) / (fontSize * .64))));
     return Math.max(node.height || 72, 28 + textLines * fontSize * 1.36 + (node.image ? 150 : 0) + (node.eventTitle || node.eventAt ? 44 : 0));
   }
@@ -1811,91 +2079,363 @@
     };
   }
 
+  // Routes are stored in world coordinates: zooming never changes their shape.
+  const ROUTE_CLEARANCE = 24;
+  const ROUTE_RADIUS = 10;
+  let routingScene = null;
+
+  function routingRect(node, height) {
+    return { id: node.id, left: node.x, top: node.y, right: node.x + node.width, bottom: node.y + height };
+  }
+
+  function expandRoutingRect(rect, amount) {
+    return { ...rect, left: rect.left - amount, top: rect.top - amount,
+      right: rect.right + amount, bottom: rect.bottom + amount };
+  }
+
+  function getRoutingScene() {
+    const heights = new Map([...el.nodes.children].filter(dom => !dom.hidden)
+      .map(dom => [dom.dataset.nodeId, dom.offsetHeight]));
+    const rects = getVisibleNodes().map(node => routingRect(node, heights.get(node.id) || getNodeHeight(node)));
+    const key = JSON.stringify(rects);
+    if (!routingScene || routingScene.key !== key) {
+      routingScene = { key, rects, byId: new Map(rects.map(rect => [rect.id, rect])), routes: new Map() };
+    }
+    return routingScene;
+  }
+
+  function routingPointInside(point, rect) {
+    return point.x > rect.left + .001 && point.x < rect.right - .001
+      && point.y > rect.top + .001 && point.y < rect.bottom - .001;
+  }
+
+  // The open interior is blocked; a segment may follow the padded boundary.
+  function routingIntersection(a, b, rect) {
+    const left = rect.left + .001, right = rect.right - .001;
+    const top = rect.top + .001, bottom = rect.bottom - .001;
+    if (Math.max(a.x, b.x) <= left || Math.min(a.x, b.x) >= right
+      || Math.max(a.y, b.y) <= top || Math.min(a.y, b.y) >= bottom) return null;
+    let first = 0, last = 1;
+    const dx = b.x - a.x, dy = b.y - a.y;
+    if (Math.abs(dx) > 1e-12) {
+      const t1 = (left - a.x) / dx, t2 = (right - a.x) / dx;
+      first = Math.max(first, Math.min(t1, t2)); last = Math.min(last, Math.max(t1, t2));
+    }
+    if (Math.abs(dy) > 1e-12) {
+      const t1 = (top - a.y) / dy, t2 = (bottom - a.y) / dy;
+      first = Math.max(first, Math.min(t1, t2)); last = Math.min(last, Math.max(t1, t2));
+    }
+    return first < last ? [first, last] : null;
+  }
+
+  function routingSegmentClear(a, b, rects) {
+    return !rects.some(rect => routingIntersection(a, b, rect));
+  }
+
+  function routingMidpoint(a, b) { return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; }
+
+  function flattenRoute(commands) {
+    const pieces = [];
+    let piece = null, current = null;
+    const distanceToLine = (p, a, b) => {
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const t = clamp(((p.x - a.x) * dx + (p.y - a.y) * dy) / (dx * dx + dy * dy || 1), 0, 1);
+      return Math.hypot(p.x - a.x - t * dx, p.y - a.y - t * dy);
+    };
+    const flatten = (a, b, c, d, depth = 0) => {
+      if (depth >= 14 || Math.max(distanceToLine(b, a, d), distanceToLine(c, a, d)) < .5) { piece.push(d); return; }
+      const ab = routingMidpoint(a, b), bc = routingMidpoint(b, c), cd = routingMidpoint(c, d);
+      const abc = routingMidpoint(ab, bc), bcd = routingMidpoint(bc, cd), mid = routingMidpoint(abc, bcd);
+      flatten(a, ab, abc, mid, depth + 1); flatten(mid, bcd, cd, d, depth + 1);
+    };
+    for (const command of commands) {
+      const [type, ...v] = command;
+      const end = { x: v.at(-2), y: v.at(-1) };
+      if (type === 'M') { piece = [end]; pieces.push(piece); }
+      else if (type === 'L') piece.push(end);
+      else if (type === 'C') flatten(current, { x: v[0], y: v[1] }, { x: v[2], y: v[3] }, end);
+      else if (type === 'Q') {
+        const control = { x: v[0], y: v[1] };
+        flatten(current, { x: current.x + (control.x - current.x) * 2 / 3, y: current.y + (control.y - current.y) * 2 / 3 },
+          { x: end.x + (control.x - end.x) * 2 / 3, y: end.y + (control.y - end.y) * 2 / 3 }, end);
+      }
+      current = end;
+    }
+    return pieces;
+  }
+
+  function makeRoute(commands, p1, p2, kind = 'curve') {
+    return { commands, p1, p2, kind, pieces: flattenRoute(commands) };
+  }
+
+  function routeIsClear(route, rects) {
+    return route.pieces.every(piece => piece.every((p, i) => !i || routingSegmentClear(piece[i - 1], p, rects)));
+  }
+
+  function routingPorts(rect, obstacles) {
+    const ports = [];
+    // Extra positions help when a nearby card covers the middle of a side.
+    for (const ratio of [.5, .25, .75]) {
+      const x = rect.left + (rect.right - rect.left) * ratio, y = rect.top + (rect.bottom - rect.top) * ratio;
+      for (const [ax, ay, dx, dy] of [[rect.left, y, -1, 0], [rect.right, y, 1, 0], [x, rect.top, 0, -1], [x, rect.bottom, 0, 1]]) {
+        const anchor = { x: ax, y: ay }, point = { x: ax + dx * ROUTE_CLEARANCE, y: ay + dy * ROUTE_CLEARANCE };
+        if (routingSegmentClear(anchor, point, obstacles.filter(other => other.id !== rect.id))) ports.push({ ...point, anchor });
+      }
+    }
+    return ports;
+  }
+
+  function findVisibilityRoute(sourceRect, targetRect, obstacles) {
+    const starts = routingPorts(sourceRect, obstacles), ends = routingPorts(targetRect, obstacles);
+    if (!starts.length || !ends.length) return null;
+    const points = [...starts, ...ends];
+    for (const rect of obstacles) {
+      for (const [x, y] of [[rect.left, rect.top], [rect.right, rect.top], [rect.right, rect.bottom], [rect.left, rect.bottom]]) {
+        const point = { x, y };
+        if (!obstacles.some(other => routingPointInside(point, other))) points.push(point);
+      }
+    }
+    const heuristic = points.map(point => Math.min(...ends.map(end => Math.hypot(point.x - end.x, point.y - end.y))));
+    const distance = new Float64Array(points.length).fill(Infinity);
+    const previous = new Int32Array(points.length).fill(-1);
+    const visited = new Uint8Array(points.length);
+    starts.forEach((_, i) => { distance[i] = ROUTE_CLEARANCE + (i >= 4 ? 2 : 0); });
+    // A small bend cost favors legible paths over a chain of tiny detours.
+    for (let step = 0; step < points.length; step++) {
+      let best = -1;
+      for (let i = 0; i < points.length; i++) if (!visited[i] && (best < 0 || distance[i] + heuristic[i] < distance[best] + heuristic[best])) best = i;
+      if (best < 0 || !Number.isFinite(distance[best])) return null;
+      if (best >= starts.length && best < starts.length + ends.length) {
+        const chain = [];
+        for (let i = best; i >= 0; i = previous[i]) chain.push(points[i]);
+        chain.reverse();
+        return [chain[0].anchor, ...chain.map(({ x, y }) => ({ x, y })), points[best].anchor];
+      }
+      visited[best] = 1;
+      for (let next = starts.length; next < points.length; next++) {
+        if (visited[next]) continue;
+        const length = Math.hypot(points[next].x - points[best].x, points[next].y - points[best].y);
+        const cost = distance[best] + length + (next >= starts.length + ends.length ? 8 : 0);
+        if (cost < distance[next] && routingSegmentClear(points[best], points[next], obstacles)) {
+          distance[next] = cost; previous[next] = best;
+        }
+      }
+    }
+    return null;
+  }
+
+  function roundedRoute(points) {
+    const commands = [['M', points[0].x, points[0].y]];
+    for (let i = 1; i < points.length - 1; i++) {
+      const a = points[i - 1], b = points[i], c = points[i + 1];
+      const incoming = Math.hypot(b.x - a.x, b.y - a.y), outgoing = Math.hypot(c.x - b.x, c.y - b.y);
+      if (incoming < .01 || outgoing < .01) continue;
+      const radius = Math.min(ROUTE_RADIUS, incoming / 2, outgoing / 2);
+      const enter = { x: b.x + (a.x - b.x) * radius / incoming, y: b.y + (a.y - b.y) * radius / incoming };
+      const leave = { x: b.x + (c.x - b.x) * radius / outgoing, y: b.y + (c.y - b.y) * radius / outgoing };
+      commands.push(['L', enter.x, enter.y], ['Q', b.x, b.y, leave.x, leave.y]);
+    }
+    commands.push(['L', points.at(-1).x, points.at(-1).y]);
+    return makeRoute(commands, points[0], points.at(-1), 'detour');
+  }
+
+  function clipBlockedRoute(route, obstacles) {
+    // Overlapping cards can enclose an endpoint completely. Leave a visible gap
+    // around the obstruction instead of drawing a misleading connection to it.
+    const commands = [];
+    for (const piece of route.pieces) {
+      let lastEnd = null;
+      for (let i = 1; i < piece.length; i++) {
+        const a = piece[i - 1], b = piece[i];
+        const cuts = obstacles.map(rect => routingIntersection(a, b, rect)).filter(Boolean).sort((u, v) => u[0] - v[0]);
+        const intervals = [];
+        let cursor = 0;
+        for (const [start, end] of cuts) {
+          if (start > cursor) intervals.push([cursor, start]);
+          cursor = Math.max(cursor, end);
+        }
+        if (cursor < 1) intervals.push([cursor, 1]);
+        for (const [start, end] of intervals) {
+          const from = { x: a.x + (b.x - a.x) * start, y: a.y + (b.y - a.y) * start };
+          const to = { x: a.x + (b.x - a.x) * end, y: a.y + (b.y - a.y) * end };
+          if (Math.hypot(to.x - from.x, to.y - from.y) < .01) continue;
+          if (!lastEnd || Math.hypot(lastEnd.x - from.x, lastEnd.y - from.y) > .01) commands.push(['M', from.x, from.y]);
+          commands.push(['L', to.x, to.y]); lastEnd = to;
+        }
+      }
+    }
+    return makeRoute(commands, route.p1, route.p2, 'interrupted');
+  }
+
+  function getEdgeRoute(source, target, scene = getRoutingScene()) {
+    const key = JSON.stringify([source.id, target.id]);
+    if (scene.routes.has(key)) return scene.routes.get(key);
+    const { p1, p2, c1, c2 } = edgeGeometry(source, target);
+    let route = makeRoute([['M', p1.x, p1.y], ['C', c1.x, c1.y, c2.x, c2.y, p2.x, p2.y]], p1, p2);
+    const blocking = scene.rects.map(rect => expandRoutingRect(rect, rect.id === source.id || rect.id === target.id ? -.5 : 12));
+    if (!routeIsClear(route, blocking)) {
+      const padded = scene.rects.map(rect => expandRoutingRect(rect, ROUTE_CLEARANCE));
+      const sourceRect = scene.byId.get(source.id), targetRect = scene.byId.get(target.id);
+      const active = new Set([source.id, target.id]);
+      for (const rect of padded) if (!routeIsClear(route, [rect])) active.add(rect.id);
+      let routed = null;
+      // Expand the local graph only when a detour encounters another obstacle.
+      for (let pass = 0; pass <= padded.length; pass++) {
+        const points = findVisibilityRoute(sourceRect, targetRect, padded.filter(rect => active.has(rect.id)));
+        if (!points) break;
+        const blockers = padded.filter(rect => !active.has(rect.id) && points.some((point, i) => i && routingIntersection(points[i - 1], point, rect)));
+        if (blockers.length) { blockers.forEach(rect => active.add(rect.id)); continue; }
+        routed = roundedRoute(points);
+        // Guard the rounded corners too, including very narrow arrangements.
+        if (!routeIsClear(routed, blocking)) {
+          routed = makeRoute(points.map((point, i) => [i ? 'L' : 'M', point.x, point.y]), points[0], points.at(-1), 'detour');
+        }
+        break;
+      }
+      route = routed || clipBlockedRoute(route, blocking);
+    }
+    scene.routes.set(key, route);
+    return route;
+  }
+
+  function projectedRoutePath(route) {
+    return route.commands.map(([type, ...values]) => {
+      const coordinates = [];
+      for (let i = 0; i < values.length; i += 2) {
+        const point = worldToScreen(values[i], values[i + 1]); coordinates.push(point.x, point.y);
+      }
+      return type + ' ' + coordinates.join(' ');
+    }).join(' ');
+  }
+
+  function drawRouteToCanvas(ctx, route) {
+    ctx.beginPath();
+    for (const [type, ...values] of route.commands) {
+      if (type === 'M') ctx.moveTo(...values);
+      else if (type === 'L') ctx.lineTo(...values);
+      else if (type === 'Q') ctx.quadraticCurveTo(...values);
+      else if (type === 'C') ctx.bezierCurveTo(...values);
+    }
+    ctx.stroke();
+  }
+
+  function edgeLabelPoint(route, label, scene) {
+    const segments = [];
+    let total = 0;
+    for (const piece of route.pieces) for (let i = 1; i < piece.length; i++) {
+      const length = Math.hypot(piece[i].x - piece[i - 1].x, piece[i].y - piece[i - 1].y);
+      segments.push({ a: piece[i - 1], b: piece[i], length, start: total }); total += length;
+    }
+    if (!total) return null;
+    const halfWidth = Math.min(300, Math.max(24, label.trim().length * 7.2)) / 2 + 9;
+    for (let attempt = 0; attempt <= 36; attempt++) {
+      const fraction = .5 + (attempt % 2 ? 1 : -1) * Math.ceil(attempt / 2) * .025;
+      const offset = total * fraction;
+      const segment = segments.find(item => item.start + item.length >= offset);
+      if (!segment) continue;
+      const t = (offset - segment.start) / (segment.length || 1);
+      const point = { x: segment.a.x + (segment.b.x - segment.a.x) * t, y: segment.a.y + (segment.b.y - segment.a.y) * t };
+      if (!scene.rects.some(rect => point.x + halfWidth > rect.left && point.x - halfWidth < rect.right
+        && point.y + 16 > rect.top && point.y - 16 < rect.bottom)) return point;
+    }
+    return null;
+  }
+
+  function routeAttachments(route, source, target, scene) {
+    return [route.p1, route.p2].filter((point, i) => !scene.rects.some(rect => rect.id !== (i ? target.id : source.id)
+      && routingPointInside(point, expandRoutingRect(rect, 4))));
+  }
+
+
   function renderEdges() {
     const ns = 'http://www.w3.org/2000/svg';
     const fragment = document.createDocumentFragment();
-    const hidden = getHiddenNodeIds();
-    for (const edge of state.edges) {
-      if (hidden.has(edge.source) || hidden.has(edge.target)) continue;
-      const source = getNode(edge.source);
-      const target = getNode(edge.target);
+    const scene = getRoutingScene();
+    for (const edge of getVisibleEdges()) {
+      const source = getNode(edge.source), target = getNode(edge.target);
       if (!source || !target) continue;
+      const route = getEdgeRoute(source, target, scene);
+      const path = projectedRoutePath(route);
       const g = document.createElementNS(ns, 'g');
       g.classList.add('edge-group');
       g.dataset.edgeId = edge.id;
+      g.dataset.routeKind = route.kind;
+      const title = document.createElementNS(ns, 'title');
+      title.textContent = edge.label?.trim() || 'Liaison entre deux étiquettes';
+      g.appendChild(title);
       const visible = document.createElementNS(ns, 'path');
       visible.setAttribute('class', 'edge-visible');
-      visible.setAttribute('d', edgePath(source, target));
+      visible.setAttribute('d', path);
       const hit = document.createElementNS(ns, 'path');
       hit.setAttribute('class', 'edge-hit');
-      hit.setAttribute('d', edgePath(source, target));
+      hit.setAttribute('d', path);
       hit.addEventListener('click', event => {
-        event.stopPropagation();
-        stopConnectMode();
-        selectItem('edge', edge.id);
+        event.stopPropagation(); stopConnectMode(); selectItem('edge', edge.id);
       });
       g.append(visible, hit);
-      if (edge.label && edge.label.trim()) {
-        const { p1, p2, c1, c2 } = edgeGeometry(source, target);
-        const mid = cubicPoint(p1, c1, c2, p2);
-        const labelGroup = document.createElementNS(ns, 'g');
-        const screenMid = worldToScreen(mid.x, mid.y);
-        labelGroup.setAttribute('transform', `translate(${screenMid.x} ${screenMid.y}) scale(${state.view.scale})`);
-        const text = document.createElementNS(ns, 'text');
-        text.setAttribute('class', 'edge-label-text');
-        text.textContent = edge.label.trim();
-        labelGroup.appendChild(text);
-        g.appendChild(labelGroup);
-        fragment.appendChild(g);
-        const estimatedWidth = Math.min(300, Math.max(24, edge.label.trim().length * 7.2));
-        const bg = document.createElementNS(ns, 'rect');
-        bg.setAttribute('class', 'edge-label-bg');
-        bg.setAttribute('x', String(-estimatedWidth / 2 - 7));
-        bg.setAttribute('y', '-11');
-        bg.setAttribute('width', String(estimatedWidth + 14));
-        bg.setAttribute('height', '22');
-        bg.setAttribute('rx', '7');
-        labelGroup.insertBefore(bg, text);
-      } else {
-        fragment.appendChild(g);
+      for (const point of routeAttachments(route, source, target, scene)) {
+        const screen = worldToScreen(point.x, point.y);
+        const dot = document.createElementNS(ns, 'circle');
+        dot.setAttribute('class', 'edge-attachment');
+        dot.setAttribute('cx', screen.x); dot.setAttribute('cy', screen.y);
+        dot.setAttribute('r', Math.min(3.5, 3.5 * state.view.scale));
+        g.appendChild(dot);
       }
+      if (edge.label?.trim()) {
+        const mid = edgeLabelPoint(route, edge.label, scene);
+        if (mid) {
+          const labelGroup = document.createElementNS(ns, 'g');
+          const screenMid = worldToScreen(mid.x, mid.y);
+          labelGroup.setAttribute('transform', `translate(${screenMid.x} ${screenMid.y}) scale(${state.view.scale})`);
+          const width = Math.min(300, Math.max(24, edge.label.trim().length * 7.2));
+          const bg = document.createElementNS(ns, 'rect');
+          bg.setAttribute('class', 'edge-label-bg');
+          bg.setAttribute('x', String(-width / 2 - 7)); bg.setAttribute('y', '-11');
+          bg.setAttribute('width', String(width + 14)); bg.setAttribute('height', '22'); bg.setAttribute('rx', '7');
+          const text = document.createElementNS(ns, 'text');
+          text.setAttribute('class', 'edge-label-text');
+          text.textContent = edge.label.trim().length > 42 ? edge.label.trim().slice(0, 41) + '…' : edge.label.trim();
+          labelGroup.append(bg, text); g.appendChild(labelGroup);
+        }
+      }
+      fragment.appendChild(g);
     }
 
     if (connectMode && connectSourceId && previewPoint) {
       const source = getNode(connectSourceId);
       if (source) {
-        const p1 = nodeAnchor(source, null);
-        const p2 = previewPoint;
-        const dx = p2.x - p1.x;
-        const bend = Math.max(60, Math.abs(dx) * .45);
-        const path = projectedEdgePath({ p1, p2,
-          c1: { x: p1.x + Math.sign(dx || 1) * bend, y: p1.y },
-          c2: { x: p2.x - Math.sign(dx || 1) * bend, y: p2.y } });
+        const p1 = nodeAnchor(source, null), p2 = previewPoint;
+        const dx = p2.x - p1.x, bend = Math.max(60, Math.abs(dx) * .45);
+        const preview = makeRoute([['M', p1.x, p1.y], ['C', p1.x + Math.sign(dx || 1) * bend, p1.y,
+          p2.x - Math.sign(dx || 1) * bend, p2.y, p2.x, p2.y]], p1, p2);
+        const obstacles = scene.rects.filter(rect => rect.id !== source.id).map(rect => expandRoutingRect(rect, 12));
         const g = document.createElementNS(ns, 'g');
         g.classList.add('edge-group', 'connect-preview');
         const visible = document.createElementNS(ns, 'path');
         visible.setAttribute('class', 'edge-visible');
-        visible.setAttribute('d', path);
-        g.appendChild(visible);
-        fragment.appendChild(g);
+        visible.setAttribute('d', projectedRoutePath(clipBlockedRoute(preview, obstacles)));
+        g.appendChild(visible); fragment.appendChild(g);
       }
     }
     el.edges.replaceChildren(fragment);
     renderSelection();
   }
 
+
   function renderSelection() {
     // Context is visual only: related nodes never enter the actual selection.
     const neighborhood = selectedNodeIds.size === 1 && selected?.type === 'node'
       ? getDirectNeighborhood(selected.id)
       : { nodeIds: new Set(), edgeIds: new Set() };
-    el.timelineTrack.querySelectorAll('.timeline-event').forEach(button => {
+    const dimUnrelated = !explorationMode && neighborhood.nodeIds.size > 0;
+    el.timelineScroll.querySelectorAll('.timeline-event, .timeline-period').forEach(button => {
       button.setAttribute('aria-current', String(selectedNodeIds.has(button.dataset.nodeId)));
     });
     el.nodes.querySelectorAll('.node').forEach(nodeEl => {
       const id = nodeEl.dataset.nodeId;
       nodeEl.classList.toggle('selected', selectedNodeIds.has(id));
       nodeEl.classList.toggle('related', !selectedNodeIds.has(id) && neighborhood.nodeIds.has(id));
+      nodeEl.classList.toggle('dimmed', dimUnrelated && !neighborhood.nodeIds.has(id));
       nodeEl.classList.toggle('connect-source', connectMode && connectSourceId === id);
     });
     el.edges.querySelectorAll('.edge-group').forEach(edgeEl => {
@@ -1916,12 +2456,17 @@
       el.inspectorTitle.textContent = 'Étiquette';
       el.inspectorSubtitle.textContent = 'Double-cliquez dans la bulle, puis sélectionnez du texte pour le mettre en forme. Sauvegarde automatique.';
       if (document.activeElement !== el.nodeText) el.nodeText.value = node.text;
-      el.nodeFontSize.value = String(normalizeFontSize(node.fontSize));
       el.nodeText.style.fontSize = normalizeFontSize(node.fontSize) + 'px';
       updatePanelTextFormats();
-      el.nodeSize.value = [170,210,270,340].includes(node.width) ? String(node.width) : 'custom';
       if (document.activeElement !== el.nodeEventTitle) el.nodeEventTitle.value = node.eventTitle || '';
       if (document.activeElement !== el.nodeEventAt) el.nodeEventAt.value = node.eventAt || '';
+      document.getElementById('nodeEventKind').checked = isPeriod(node);
+      document.getElementById('nodeEventAtLabel').textContent = isPeriod(node) ? 'Début' : 'Date et heure';
+      document.getElementById('nodeEventEndField').hidden = !isPeriod(node);
+      const endInput = document.getElementById('nodeEventEndAt');
+      if (document.activeElement !== endInput) { endInput.value = node.eventEndAt || ''; endInput.setCustomValidity(''); }
+      endInput.min = node.eventAt || '0001-01-01T00:00';
+      document.getElementById('nodeEventHint').textContent = isPeriod(node) ? 'Une barre discrète apparaît sous la frise.' : 'Un point apparaît sur la frise.';
       el.removeEventBtn.disabled = !node.eventAt;
       renderImagePreview(node);
       renderColors(node.color);
@@ -1931,8 +2476,8 @@
       el.inspectorSubtitle.textContent = 'Connexion entre deux étiquettes.';
       if (document.activeElement !== el.edgeLabel) el.edgeLabel.value = edge?.label || '';
     } else if (selectionCount > 1) {
-      const hidden = getHiddenNodeIds();
-      const hiddenCount = [...selectedNodeIds].filter(id => hidden.has(id)).length;
+      const visibleIds = new Set(getVisibleNodes().map(node => node.id));
+      const hiddenCount = [...selectedNodeIds].filter(id => !visibleIds.has(id)).length;
       el.inspectorTitle.textContent = `${selectionCount} étiquettes`;
       el.inspectorSubtitle.textContent = hiddenCount
         ? `Sélection multiple active, dont ${hiddenCount} étiquette${hiddenCount > 1 ? 's' : ''} masquée${hiddenCount > 1 ? 's' : ''}.`
@@ -1978,13 +2523,27 @@
     el.deleteBtn.disabled = selectedNodeIds.size === 0 && !selected;
     el.undoBtn.disabled = history.length === 0;
     el.redoBtn.disabled = future.length === 0;
+    const arrangeButton = document.getElementById('autoArrangeBtn');
+    arrangeButton.disabled = state.nodes.length < 2 || arrangeButton.hasAttribute('aria-busy');
+    el.explorationBtn.classList.toggle('active', explorationMode);
+    el.explorationBtn.setAttribute('aria-pressed', String(explorationMode));
+    el.explorationBtn.title = explorationMode
+      ? 'Quitter l’exploration · Un clic sur le fond retrouve toute la carte'
+      : 'Afficher seulement l’étiquette choisie, ses liens et ses voisines directes';
+    el.fitBtn.title = getExplorationNeighborhood() ? 'Cadrer les étiquettes affichées (F)' : 'Cadrer toute la carte (F)';
+    el.pngBtn.title = getExplorationNeighborhood() ? 'Exporter la vue explorée en PNG' : 'Exporter la carte en PNG';
   }
 
   function updateStatus() {
     const n = state.nodes.length;
     const e = state.edges.length;
     const selection = selectedNodeIds.size > 1 ? ` · ${selectedNodeIds.size} sélectionnées` : '';
-    el.countStatus.textContent = `${n} étiquette${n > 1 ? 's' : ''} · ${e} liaison${e > 1 ? 's' : ''}${selection}`;
+    const neighborhood = getExplorationNeighborhood();
+    const nodeCount = neighborhood ? `${getVisibleNodes().length}/${n}` : n;
+    const edgeCount = neighborhood ? `${getVisibleEdges().length}/${e}` : e;
+    const exploration = !explorationMode ? '' : connectMode ? 'Exploration en pause · '
+      : neighborhood ? 'Exploration · ' : 'Exploration : cliquez sur une étiquette · ';
+    el.countStatus.textContent = `${exploration}${nodeCount} étiquette${n > 1 ? 's' : ''} · ${edgeCount} liaison${e > 1 ? 's' : ''}${selection}`;
   }
 
   function onNodeClick(event) {
@@ -2051,7 +2610,7 @@
   }
 
   function onCanvasPointerDown(event) {
-    if (event.button !== 0 && event.button !== 1) return;
+    if (event.button !== 0) return;
     if (event.target.closest('.node') || event.target.closest('.edge-hit')) return;
     if (connectMode && event.button === 0) {
       clearSelection();
@@ -2082,13 +2641,19 @@
     }
 
     clearSelection();
+    beginCanvasPan(event, explorationMode);
+  }
+
+  function beginCanvasPan(event, exitExplorationOnClick = false) {
     interaction = {
       type: 'pan',
       pointerId: event.pointerId,
       startX: event.clientX,
       startY: event.clientY,
       viewX: state.view.x,
-      viewY: state.view.y
+      viewY: state.view.y,
+      moved: false,
+      exitExplorationOnClick
     };
     el.canvas.classList.add('panning');
     el.canvas.setPointerCapture(event.pointerId);
@@ -2119,7 +2684,7 @@
     const ids = new Set(interaction.baseIds);
     if (interaction.moved) {
       el.nodes.querySelectorAll('.node').forEach(nodeEl => {
-        if (nodeEl.style.visibility === 'hidden') return;
+        if (nodeEl.hidden || nodeEl.style.visibility === 'hidden') return;
         const r = nodeEl.getBoundingClientRect();
         const intersects = r.right >= left && r.left <= right && r.bottom >= top && r.top <= bottom;
         if (intersects) ids.add(nodeEl.dataset.nodeId);
@@ -2148,12 +2713,13 @@
       node.height = clamp(Math.round(interaction.height + dy), 72, 2000);
       const dom = el.nodes.querySelector(`[data-node-id="${CSS.escape(node.id)}"]`);
       if (dom) { dom.style.width = node.width + 'px'; dom.style.minHeight = node.height + 'px'; }
-      el.nodeSize.value = [170,210,270,340].includes(node.width) ? String(node.width) : 'custom';
       renderEdges();
       scheduleSave();
     } else if (interaction.type === 'pan') {
+      if (Math.hypot(event.clientX - interaction.startX, event.clientY - interaction.startY) > 4) interaction.moved = true;
       state.view.x = interaction.viewX + event.clientX - interaction.startX;
       state.view.y = interaction.viewY + event.clientY - interaction.startY;
+      if (connectMode) previewPoint = screenToWorld(event.clientX, event.clientY);
       applyView();
       scheduleSave();
     } else if (interaction.type === 'marquee') {
@@ -2183,6 +2749,11 @@
   function onPointerUp(event) {
     if (!interaction || interaction.pointerId !== event.pointerId) return;
     const finished = interaction;
+    // Only a completed primary click on the background leaves exploration.
+    // Dragging (even back to its origin), the middle button and cancellation do not.
+    const exitExploration = explorationMode && finished.type === 'pan' && finished.exitExplorationOnClick
+      && !finished.moved && event.type === 'pointerup' && event.button === 0
+      && Math.hypot(event.clientX - finished.startX, event.clientY - finished.startY) <= 4;
     if (finished.type === 'pan') el.canvas.classList.remove('panning');
     if (finished.type === 'marquee') finishMarquee();
     if (finished.type === 'nodes-drag') {
@@ -2192,6 +2763,10 @@
       el.modeStatus.textContent = selectedNodeIds.size > 1 ? `${selectedNodeIds.size} étiquettes sélectionnées` : 'Mode déplacement';
     }
     interaction = null;
+    if (exitExploration) {
+      toggleExplorationMode();
+      fitView();
+    }
   }
 
   function onCanvasDoubleClick(event) {
@@ -2241,12 +2816,24 @@
   }
 
   function getBounds() {
-    const visibleNodes = getVisibleNodes();
-    if (!visibleNodes.length) return { minX: 0, minY: 0, maxX: 1, maxY: 1, width: 1, height: 1 };
-    const minX = Math.min(...visibleNodes.map(n => n.x));
-    const minY = Math.min(...visibleNodes.map(n => n.y));
-    const maxX = Math.max(...visibleNodes.map(n => n.x + n.width));
-    const maxY = Math.max(...visibleNodes.map(n => n.y + getNodeHeight(n)));
+    const scene = getRoutingScene();
+    if (!scene.rects.length) return { minX: 0, minY: 0, maxX: 1, maxY: 1, width: 1, height: 1 };
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    const include = (x, y) => { minX = Math.min(minX, x); minY = Math.min(minY, y); maxX = Math.max(maxX, x); maxY = Math.max(maxY, y); };
+    for (const rect of scene.rects) { include(rect.left, rect.top); include(rect.right, rect.bottom); }
+    for (const edge of getVisibleEdges()) {
+      const source = getNode(edge.source), target = getNode(edge.target);
+      if (!source || !target) continue;
+      const route = getEdgeRoute(source, target, scene);
+      for (const [, ...values] of route.commands) for (let i = 0; i < values.length; i += 2) include(values[i], values[i + 1]);
+      if (edge.label?.trim()) {
+        const mid = edgeLabelPoint(route, edge.label, scene);
+        if (mid) {
+          const halfWidth = Math.min(300, Math.max(24, edge.label.trim().length * 7.2)) / 2 + 9;
+          include(mid.x - halfWidth, mid.y - 14); include(mid.x + halfWidth, mid.y + 14);
+        }
+      }
+    }
     return { minX, minY, maxX, maxY, width: Math.max(1, maxX - minX), height: Math.max(1, maxY - minY) };
   }
 
@@ -2263,9 +2850,169 @@
     scheduleSave();
   }
 
-  const textStyles = ['bold', 'italic', 'underline', 'highlight'];
+  const textStyles = ['bold', 'italic', 'underline', 'strike', 'highlight'];
   const formatPopup = document.getElementById('textFormatPopup');
   let textSelection = null;
+  let selectingText = false;
+
+  // Use the same text model for saving and selection offsets. Range.toString()
+  // omits the line breaks created by contenteditable's DIV/P/BR elements.
+  function readRichEditor(editor) {
+    const runs = [], offsets = new WeakMap(), styles = new WeakMap();
+    let length = 0;
+    const append = run => { runs.push(run); length += run.text.length; };
+    const readStyle = element => {
+      if (styles.has(element)) return styles.get(element);
+      const computed = getComputedStyle(element);
+      const style = { bold: Number(computed.fontWeight) >= 600, italic: computed.fontStyle === 'italic', fontSize: normalizeRunFontSize(parseFloat(computed.fontSize)) };
+      for (let ancestor = element; ancestor && ancestor !== editor; ancestor = ancestor.parentElement) {
+        const css = getComputedStyle(ancestor);
+        style.underline ||= css.textDecorationLine.includes('underline');
+        style.strike ||= css.textDecorationLine.includes('line-through');
+        style.highlight ||= css.backgroundColor === 'rgb(255, 241, 118)';
+      }
+      styles.set(element, style);
+      return style;
+    };
+    const walk = element => {
+      if (element.nodeType === Node.TEXT_NODE) {
+        offsets.set(element, [length]);
+        append({ ...readStyle(element.parentElement), text: element.textContent });
+      } else if (element.nodeName === 'BR') {
+        offsets.set(element, [length]);
+        // A lone BR is the browser's placeholder in an empty paragraph.
+        let placeholderNode = element;
+        while (!placeholderNode.previousSibling && !placeholderNode.nextSibling
+          && placeholderNode.parentNode !== editor && !['DIV', 'P'].includes(placeholderNode.parentNode.nodeName)) {
+          placeholderNode = placeholderNode.parentNode;
+        }
+        const placeholder = !placeholderNode.previousSibling && !placeholderNode.nextSibling
+          && (placeholderNode.parentNode === editor || ['DIV', 'P'].includes(placeholderNode.parentNode.nodeName));
+        if (!placeholder) append({ text: '\n' });
+      } else {
+        if (['DIV', 'P'].includes(element.nodeName) && element !== editor && (length || element.previousSibling)) append({ text: '\n' });
+        const boundaries = [length];
+        for (const child of element.childNodes) { walk(child); boundaries.push(length); }
+        offsets.set(element, boundaries);
+      }
+    };
+    walk(editor);
+    return { runs, text: runs.map(run => run.text).join(''), offsets };
+  }
+
+  function editorOffset(model, container, offset) {
+    const boundaries = model.offsets.get(container);
+    if (!boundaries) return null;
+    return container.nodeType === Node.TEXT_NODE ? boundaries[0] + offset : boundaries[offset];
+  }
+
+  function getEditorSelection(editor, model = readRichEditor(editor)) {
+    const selection = window.getSelection();
+    if (!selection.rangeCount || !editor.contains(selection.anchorNode) || !editor.contains(selection.focusNode)) return null;
+    const anchor = editorOffset(model, selection.anchorNode, selection.anchorOffset);
+    const focus = editorOffset(model, selection.focusNode, selection.focusOffset);
+    if (anchor == null || focus == null) return null;
+    return { start: Math.min(anchor, focus), end: Math.max(anchor, focus), backward: anchor > focus, source: 'node' };
+  }
+
+  function restoreEditorSelection(editor, target) {
+    const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT);
+    const points = [];
+    let length = 0, current;
+    while ((current = walker.nextNode())) {
+      points.push({ node: current, start: length, end: length + current.length });
+      length += current.length;
+    }
+    const pointAt = value => {
+      const offset = clamp(value, 0, length);
+      const point = points.find(point => offset <= point.end);
+      if (!point) return { node: editor, offset: 0 };
+      const checkbox = point.node.parentElement.closest('.text-checkbox');
+      if (checkbox) {
+        return { node: checkbox.parentNode, offset: Array.prototype.indexOf.call(checkbox.parentNode.childNodes, checkbox) + (offset > point.start ? 1 : 0) };
+      }
+      return { node: point.node, offset: offset - point.start };
+    };
+    const start = pointAt(target.start), end = pointAt(target.end);
+    const anchor = target.backward ? end : start, focus = target.backward ? start : end;
+    window.getSelection().setBaseAndExtent(anchor.node, anchor.offset, focus.node, focus.offset);
+  }
+
+  function checkboxLines(target) {
+    const { text } = target.node;
+    const first = target.start > 0 ? text.lastIndexOf('\n', target.start - 1) + 1 : 0;
+    // A selection ending at the start of the next line excludes that line.
+    const last = target.end > target.start ? target.end - 1 : target.start;
+    const lines = [];
+    for (let start = first; start <= last;) {
+      lines.push({ start, marked: /^[☐☑]/.test(text.slice(start)) });
+      const next = text.indexOf('\n', start);
+      if (next < 0) break;
+      start = next + 1;
+    }
+    return lines;
+  }
+
+  function checkboxState(target) {
+    const lines = checkboxLines(target);
+    return lines.every(line => line.marked) ? 'true' : lines.some(line => line.marked) ? 'mixed' : 'false';
+  }
+
+  function toggleTextCheckboxes(target) {
+    if (!target) return;
+    const { node, editor } = target;
+    const lines = checkboxLines(target), remove = lines.every(line => line.marked);
+    const chars = richCharacters(node);
+    const edits = lines.filter(line => remove || !line.marked).map(line => ({
+      start: line.start,
+      count: remove ? (node.text[line.start + 1] === ' ' ? 2 : 1) : 0,
+      insert: remove ? [] : [{ text: '☐' }, { text: ' ' }]
+    }));
+    clearTimeout(textHistoryTimer); textHistoryTimer = null;
+    pushHistory();
+    for (const edit of [...edits].reverse()) chars.splice(edit.start, edit.count, ...edit.insert);
+    const moveOffset = offset => {
+      let shift = 0;
+      for (const edit of edits) {
+        if (offset < edit.start) break;
+        if (offset <= edit.start + edit.count) return edit.start + shift + edit.insert.length;
+        shift += edit.insert.length - edit.count;
+      }
+      return offset + shift;
+    };
+    node.richText = mergeRichRuns(chars);
+    node.text = chars.map(char => char.text).join('');
+    const nextTarget = { ...target, start: moveOffset(target.start), end: moveOffset(target.end) };
+    el.nodeText.value = node.text;
+    if (editor) paintRichText(editor, node);
+    if (target.source === 'node' && editor?.isContentEditable) restoreEditorSelection(editor, nextTarget);
+    if (target.source === 'textarea') el.nodeText.setSelectionRange(nextTarget.start, nextTarget.end, target.backward ? 'backward' : 'forward');
+    renderEdges(); scheduleSave(); refreshTextPopup();
+  }
+
+  function updateTextCheckboxLabel(checkbox, checked) {
+    checkbox.setAttribute('aria-checked', String(checked));
+    checkbox.setAttribute('aria-label', checked ? 'Décocher la tâche' : 'Cocher la tâche');
+    checkbox.title = checked ? 'Décocher' : 'Cocher';
+  }
+
+  function toggleTextCheckbox(checkbox, editor, node) {
+    const model = readRichEditor(editor);
+    const offset = editorOffset(model, checkbox, 0);
+    const chars = richCharacters(node);
+    if (offset == null || !chars[offset] || !/^[☐☑]$/.test(chars[offset].text)) return;
+    clearTimeout(textHistoryTimer); textHistoryTimer = null;
+    pushHistory();
+    const checked = chars[offset].text !== '☑';
+    chars[offset].text = checked ? '☑' : '☐';
+    node.richText = mergeRichRuns(chars);
+    node.text = chars.map(char => char.text).join('');
+    checkbox.firstChild.nodeValue = checked ? '☑' : '☐';
+    updateTextCheckboxLabel(checkbox, checked);
+    selectItem('node', node.id);
+    el.nodeText.value = node.text;
+    scheduleSave(); refreshTextPopup();
+  }
 
   function mergeRichRuns(runs) {
     const result = [];
@@ -2273,8 +3020,10 @@
       if (!run.text) continue;
       const clean = { text: run.text };
       for (const key of textStyles) clean[key] = run[key] === true;
+      const size = normalizeRunFontSize(run.fontSize);
+      if (size) clean.fontSize = size;
       const last = result[result.length - 1];
-      if (last && textStyles.every(key => last[key] === clean[key])) last.text += clean.text;
+      if (last && last.fontSize === clean.fontSize && textStyles.every(key => last[key] === clean[key])) last.text += clean.text;
       else result.push(clean);
     }
     return result;
@@ -2291,41 +3040,38 @@
   }
 
   function normalizeFontSize(value) {
-    return [12, 14, 16, 18, 20, 24, 28, 32].includes(Number(value)) ? Number(value) : 14;
+    return normalizeRunFontSize(value) || 14;
   }
 
   function getPanelTextTarget() {
     const node = selected?.type === 'node' && selectedNodeIds.size === 1 ? getNode(selected.id) : null;
     if (!node) return null;
-    const editor = el.nodes.querySelector(`[data-node-id="${CSS.escape(node.id)}"] .node-content`);
-    if (document.activeElement === el.nodeText && el.nodeText.selectionStart < el.nodeText.selectionEnd) {
-      return { node, editor, start: el.nodeText.selectionStart, end: el.nodeText.selectionEnd, source: 'textarea' };
-    }
-    const selection = window.getSelection();
-    if (editor && selection.rangeCount && !selection.isCollapsed) {
-      const range = selection.getRangeAt(0);
-      if (editor.contains(range.startContainer) && editor.contains(range.endContainer)) {
-        const prefix = range.cloneRange();
-        prefix.selectNodeContents(editor); prefix.setEnd(range.startContainer, range.startOffset);
-        const start = prefix.toString().length;
-        return { node, editor, start, end: start + range.toString().length, source: 'node' };
-      }
-    }
+    const editor = el.nodes.querySelector('[data-node-id="' + CSS.escape(node.id) + '"] .node-content');
     return { node, editor, start: 0, end: node.text.length, source: 'all' };
   }
 
   function updatePanelTextFormats() {
     const target = getPanelTextTarget();
     const chars = target ? richCharacters(target.node).slice(target.start, target.end) : [];
-    for (const button of el.panelTextFormats.querySelectorAll('button')) {
-      button.disabled = !chars.length;
+    for (const button of el.panelTextFormats.querySelectorAll('button[data-format]')) {
       const key = button.dataset.format;
+      if (key === 'checkbox') {
+        const checkboxTarget = getPanelTextTarget(true);
+        button.disabled = !checkboxTarget;
+        button.setAttribute('aria-pressed', checkboxTarget ? checkboxState(checkboxTarget) : 'false');
+        continue;
+      }
+      button.disabled = !chars.length;
       button.setAttribute('aria-pressed', chars.length && chars.every(c => c[key]) ? 'true' : chars.some(c => c[key]) ? 'mixed' : 'false');
     }
-    el.panelTextScope.textContent = target && target.source !== 'all' ? 'Appliquer au passage sélectionné.' : 'Appliquer à tout le texte.';
+    el.panelTextScope.textContent = 'Appliquer à tout le texte.';
+    for (const button of el.panelTextFormats.querySelectorAll('[data-text-size], [data-fit-content]')) button.disabled = !target;
+    const sizes = targetFontSizes(target);
+    el.panelTextFormats.querySelector('[data-text-size]').title = 'Taille du texte' + (sizes.length === 1 ? ' · ' + sizes[0] + ' px' : sizes.length > 1 ? ' · tailles mixtes' : '');
   }
 
   function applyPanelTextFormat(key) {
+    if (key === 'checkbox') { toggleTextCheckboxes(getPanelTextTarget(true)); return; }
     const target = getPanelTextTarget();
     if (!target || target.start === target.end || !textStyles.includes(key)) return;
     if (target.source === 'node') {
@@ -2345,49 +3091,36 @@
     renderEdges(); scheduleSave(); updatePanelTextFormats();
   }
 
-  function changeNodeFontSize() {
-    const node = selected?.type === 'node' && selectedNodeIds.size === 1 ? getNode(selected.id) : null;
-    const size = normalizeFontSize(el.nodeFontSize.value);
-    if (!node || normalizeFontSize(node.fontSize) === size) return;
-    clearTimeout(textHistoryTimer); textHistoryTimer = null;
-    pushHistory(); node.fontSize = size;
-    const editor = el.nodes.querySelector(`[data-node-id="${CSS.escape(node.id)}"] .node-content`);
-    if (editor) editor.style.fontSize = size + 'px';
-    el.nodeText.style.fontSize = size + 'px';
-    renderEdges(); scheduleSave();
-  }
+
 
   function paintRichText(target, node) {
     target.style.fontSize = normalizeFontSize(node.fontSize) + 'px';
     target.replaceChildren();
     for (const run of sanitizeRichText(node.richText, node.text)) {
-      const span = document.createElement('span');
-      span.textContent = run.text;
-      span.style.fontWeight = run.bold ? '700' : '400';
-      span.style.fontStyle = run.italic ? 'italic' : 'normal';
-      span.style.textDecoration = run.underline ? 'underline' : 'none';
-      span.style.backgroundColor = run.highlight ? '#fff176' : 'transparent';
-      target.appendChild(span);
+      for (const text of run.text.split(/([☐☑])/).filter(Boolean)) {
+        const span = document.createElement('span');
+        span.textContent = text;
+        if (run.fontSize) span.style.fontSize = run.fontSize + 'px';
+        span.style.fontWeight = run.bold ? '700' : '400';
+        span.style.fontStyle = run.italic ? 'italic' : 'normal';
+        span.style.textDecoration = [run.underline && 'underline', run.strike && 'line-through'].filter(Boolean).join(' ') || 'none';
+        span.style.backgroundColor = run.highlight ? '#fff176' : 'transparent';
+        if (text === '☐' || text === '☑') {
+          span.className = 'text-checkbox';
+          span.contentEditable = 'false';
+          span.tabIndex = 0;
+          span.setAttribute('role', 'checkbox');
+          updateTextCheckboxLabel(span, text === '☑');
+        }
+        target.appendChild(span);
+      }
     }
     target.classList.toggle('empty', !node.text.trim());
     if (!node.text && !target.isContentEditable) target.textContent = 'Étiquette vide';
   }
 
   function syncRichEditor(editor, node) {
-    const runs = [];
-    const walk = element => {
-      if (element.nodeType === Node.TEXT_NODE) {
-        const style = getComputedStyle(element.parentElement);
-        runs.push({ text: element.textContent, bold: Number(style.fontWeight) >= 600,
-          italic: style.fontStyle === 'italic', underline: style.textDecorationLine.includes('underline'),
-          highlight: style.backgroundColor === 'rgb(255, 241, 118)' });
-      } else if (element.nodeName === 'BR') runs.push({ text: '\n' });
-      else {
-        if (['DIV', 'P'].includes(element.nodeName) && element !== editor && runs.length) runs.push({ text: '\n' });
-        element.childNodes.forEach(walk);
-      }
-    };
-    walk(editor);
+    const { runs } = readRichEditor(editor);
     if (!textHistoryTimer) {
       pushHistory();
       textHistoryTimer = setTimeout(() => { textHistoryTimer = null; }, 900);
@@ -2402,19 +3135,22 @@
 
   function refreshTextPopup() {
     updatePanelTextFormats();
+    if (fontSizeTarget && !fontSizeMenu.hidden) { refreshFontSizeMenu(); return; }
+    if (selectingText) { formatPopup.hidden = true; return; }
     const selection = window.getSelection();
     if (!selection.rangeCount || selection.isCollapsed) { formatPopup.hidden = true; textSelection = null; return; }
     const range = selection.getRangeAt(0);
     const origin = range.startContainer.nodeType === Node.TEXT_NODE ? range.startContainer.parentElement : range.startContainer;
     const editor = origin.closest('.node-content.editing');
-    if (!editor || !editor.contains(range.endContainer)) { formatPopup.hidden = true; return; }
-    const prefix = range.cloneRange();
-    prefix.selectNodeContents(editor); prefix.setEnd(range.startContainer, range.startOffset);
-    const start = prefix.toString().length;
+    if (!editor || !editor.contains(range.endContainer)) { formatPopup.hidden = true; textSelection = null; return; }
     const node = getNode(editor.closest('.node').dataset.nodeId);
-    textSelection = { editor, node, start, end: start + range.toString().length };
+    const target = getEditorSelection(editor);
+    if (!node || !target || target.start === target.end) { formatPopup.hidden = true; textSelection = null; return; }
+    textSelection = { editor, node, ...target };
     const chars = richCharacters(node).slice(textSelection.start, textSelection.end);
-    for (const button of formatPopup.querySelectorAll('button')) button.setAttribute('aria-pressed', String(chars.length > 0 && chars.every(c => c[button.dataset.format])));
+    for (const button of formatPopup.querySelectorAll('button[data-format]')) {
+      button.setAttribute('aria-pressed', button.dataset.format === 'checkbox' ? checkboxState(textSelection) : String(chars.length > 0 && chars.every(c => c[button.dataset.format])));
+    }
     formatPopup.hidden = false;
     const rect = range.getBoundingClientRect();
     formatPopup.style.left = Math.max(8, Math.min(innerWidth - formatPopup.offsetWidth - 8, rect.left + rect.width / 2 - formatPopup.offsetWidth / 2)) + 'px';
@@ -2422,8 +3158,10 @@
   }
 
   function applyTextFormat(key) {
+    if (key === 'checkbox') { toggleTextCheckboxes(textSelection); return; }
     if (!textSelection || !textSelection.editor.isConnected || !textStyles.includes(key)) return;
-    const { editor, node, start, end } = textSelection;
+    const target = textSelection;
+    const { editor, node, start, end } = target;
     const chars = richCharacters(node);
     const enabled = !chars.slice(start, end).every(c => c[key]);
     clearTimeout(textHistoryTimer); textHistoryTimer = null;
@@ -2431,25 +3169,28 @@
     chars.slice(start, end).forEach(c => { c[key] = enabled; });
     node.richText = mergeRichRuns(chars);
     paintRichText(editor, node);
-    const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT);
-    const range = document.createRange();
-    let offset = 0, foundStart = false, current;
-    while ((current = walker.nextNode())) {
-      const length = current.textContent.length;
-      if (!foundStart && start <= offset + length) { range.setStart(current, start - offset); foundStart = true; }
-      if (end <= offset + length) { range.setEnd(current, end - offset); break; }
-      offset += length;
-    }
-    const selection = window.getSelection(); selection.removeAllRanges(); selection.addRange(range);
+    restoreEditorSelection(editor, target);
     renderEdges(); scheduleSave(); refreshTextPopup();
   }
 
   formatPopup.addEventListener('pointerdown', event => event.preventDefault());
   formatPopup.addEventListener('click', event => {
-    const button = event.target.closest('button');
+    const button = event.target.closest('button[data-format]');
     if (button) applyTextFormat(button.dataset.format);
   });
   document.addEventListener('selectionchange', refreshTextPopup);
+  document.addEventListener('pointerdown', event => {
+    if (event.target.closest('.node-content.editing') && !event.target.closest('.text-checkbox')) {
+      selectingText = true; formatPopup.hidden = true;
+    }
+  }, true);
+  const finishTextSelection = () => {
+    if (!selectingText) return;
+    selectingText = false; refreshTextPopup();
+  };
+  document.addEventListener('pointerup', finishTextSelection);
+  document.addEventListener('pointercancel', finishTextSelection);
+  window.addEventListener('blur', () => { selectingText = false; formatPopup.hidden = true; });
   window.addEventListener('resize', () => { formatPopup.hidden = true; });
   document.addEventListener('scroll', () => { formatPopup.hidden = true; }, true);
 
@@ -2491,17 +3232,7 @@
     scheduleSave();
   }
 
-  function changeNodeSize(width) {
-    const node = selected?.type === 'node' && selectedNodeIds.size === 1 ? getNode(selected.id) : null;
-    width = Number(width);
-    if (!node || !Number.isFinite(width) || node.width === width) return;
-    pushHistory();
-    node.width = width;
-    renderNodes();
-    renderEdges();
-    renderSelection();
-    scheduleSave();
-  }
+
 
   function readImageFile(file) {
     if (!file || !file.type.startsWith('image/')) {
@@ -2574,6 +3305,7 @@
         const imported = sanitizeImported(JSON.parse(reader.result));
         pushHistory();
         state = imported;
+        explorationNodeId = null;
         selected = null;
         selectedNodeIds.clear();
         stopConnectMode();
@@ -2638,22 +3370,23 @@
       ctx.scale(scale, scale);
       ctx.translate(padding - bounds.minX, padding - bounds.minY);
 
-      const hidden = getHiddenNodeIds();
       ctx.strokeStyle = '#94a3b8';
       ctx.lineWidth = 2.25;
-      for (const edge of state.edges) {
-        if (hidden.has(edge.source) || hidden.has(edge.target)) continue;
-        const source = getNode(edge.source);
-        const target = getNode(edge.target);
+      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      const scene = getRoutingScene();
+      for (const edge of getVisibleEdges()) {
+        const source = getNode(edge.source), target = getNode(edge.target);
         if (!source || !target) continue;
-        const { p1, p2, c1, c2 } = edgeGeometry(source, target);
-        ctx.beginPath();
-        ctx.moveTo(p1.x, p1.y);
-        ctx.bezierCurveTo(c1.x, c1.y, c2.x, c2.y, p2.x, p2.y);
-        ctx.stroke();
-        if (edge.label && edge.label.trim()) {
-          const mid = cubicPoint(p1, c1, c2, p2);
-          drawEdgeLabelToCanvas(ctx, edge.label.trim(), mid.x, mid.y);
+        const route = getEdgeRoute(source, target, scene);
+        drawRouteToCanvas(ctx, route);
+        ctx.save(); ctx.fillStyle = '#94a3b8'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 1;
+        for (const point of routeAttachments(route, source, target, scene)) {
+          ctx.beginPath(); ctx.arc(point.x, point.y, 3.5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        }
+        ctx.restore();
+        if (edge.label?.trim()) {
+          const mid = edgeLabelPoint(route, edge.label, scene);
+          if (mid) drawEdgeLabelToCanvas(ctx, edge.label.trim(), mid.x, mid.y);
         }
       }
 
@@ -2683,7 +3416,7 @@
     const width = Math.min(260, ctx.measureText(label).width + 14);
     const height = 24;
     roundedRect(ctx, x - width / 2, y - height / 2, width, height, 7);
-    ctx.fillStyle = 'rgba(255,255,255,.65)';
+    ctx.fillStyle = '#f7f9fb';
     ctx.fill();
     ctx.fillStyle = '#475569';
     const shown = label.length > 42 ? label.slice(0, 41) + '…' : label;
@@ -2730,7 +3463,7 @@
       ctx.fillText(node.eventTitle || 'Événement sans titre', node.x + 15, contentY + 9, node.width - 30);
       ctx.fillStyle = '#667085';
       ctx.font = '400 10px "Segoe UI", Arial, sans-serif';
-      ctx.fillText(node.eventAt ? formatEventAt(node.eventAt) : 'Date à renseigner', node.x + 15, contentY + 26, node.width - 30);
+      ctx.fillText(eventDateLabel(node), node.x + 15, contentY + 26, node.width - 30);
       contentY += 44;
     }
     ctx.font = '650 14px "Segoe UI", Arial, sans-serif';
@@ -2738,34 +3471,7 @@
     drawRichText(ctx, node, node.x + 15, contentY + 13, node.width - 30, normalizeFontSize(node.fontSize) * 1.36);
   }
 
-  function drawRichText(ctx, node, x, y, maxWidth, lineHeight) {
-    const chars = richCharacters(node.text ? node : { text: 'Étiquette vide' });
-    const fontSize = normalizeFontSize(node.fontSize);
-    const font = c => `${c.italic ? 'italic ' : ''}${c.bold ? 700 : 400} ${fontSize}px "Segoe UI", Arial, sans-serif`;
-    let dx = 0, dy = 0;
-    for (let i = 0; i < chars.length; i++) {
-      const c = chars[i];
-      if (c.text === '\n') { dx = 0; dy += lineHeight; continue; }
-      // Move a whole word to the next line when it fits there.
-      if (!/\s/.test(c.text) && (i === 0 || /\s/.test(chars[i - 1].text))) {
-        let wordWidth = 0;
-        for (let j = i; j < chars.length && !/\s/.test(chars[j].text); j++) {
-          ctx.font = font(chars[j]); wordWidth += ctx.measureText(chars[j].text).width;
-        }
-        if (dx && wordWidth <= maxWidth && dx + wordWidth > maxWidth) { dx = 0; dy += lineHeight; }
-      }
-      ctx.font = font(c);
-      const width = ctx.measureText(c.text).width;
-      if (dx && dx + width > maxWidth) { dx = 0; dy += lineHeight; }
-      if (c.highlight) {
-        ctx.fillStyle = '#fff176'; ctx.fillRect(x + dx, y + dy, width, lineHeight);
-      }
-      ctx.fillStyle = node.text ? '#1d2733' : '#8a96a6';
-      ctx.fillText(c.text, x + dx, y + dy);
-      if (c.underline) ctx.fillRect(x + dx, y + dy + fontSize * 1.08, width, Math.max(1, fontSize / 14));
-      dx += width;
-    }
-  }
+
 
   function roundedRect(ctx, x, y, w, h, r) {
     const rr = Math.min(r, w / 2, h / 2);
@@ -2812,6 +3518,7 @@
   function resetMap() {
     pushHistory();
     state = createEmptyState();
+    explorationNodeId = null;
     selected = null;
     selectedNodeIds.clear();
     stopConnectMode();
@@ -2910,10 +3617,23 @@
     }
   }
 
+  // Handle the middle button before nodes and their controls consume the event.
+  el.canvas.addEventListener('pointerdown', event => {
+    if (event.button !== 1) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (!interaction) beginCanvasPan(event);
+  }, { capture: true });
+  el.canvas.addEventListener('auxclick', event => {
+    if (event.button === 1) event.preventDefault();
+  });
   el.canvas.addEventListener('pointerdown', onCanvasPointerDown);
   el.canvas.addEventListener('pointermove', onPointerMove);
   el.canvas.addEventListener('pointerup', onPointerUp);
   el.canvas.addEventListener('pointercancel', onPointerUp);
+  el.canvas.addEventListener('lostpointercapture', event => {
+    if (interaction?.type === 'pan') onPointerUp(event);
+  });
   el.canvas.addEventListener('dblclick', onCanvasDoubleClick);
   el.canvas.addEventListener('wheel', onWheel, { passive: false });
   el.canvas.addEventListener('dragover', event => {
@@ -2946,6 +3666,7 @@
   el.importInput.addEventListener('change', () => importJsonFile(el.importInput.files[0]));
   el.exportBtn.addEventListener('click', exportJson);
   el.pngBtn.addEventListener('click', exportPng);
+  el.explorationBtn.addEventListener('click', toggleExplorationMode);
   el.fitBtn.addEventListener('click', fitView);
   el.zoomInBtn.addEventListener('click', () => setZoom(state.view.scale * 1.15));
   el.zoomOutBtn.addEventListener('click', () => setZoom(state.view.scale / 1.15));
@@ -2959,21 +3680,23 @@
   el.nodeText.addEventListener('input', onNodeTextInput);
   el.nodeText.addEventListener('input', updatePanelTextFormats);
   el.nodeText.addEventListener('select', updatePanelTextFormats);
-  el.nodeFontSize.addEventListener('change', changeNodeFontSize);
   el.panelTextFormats.addEventListener('pointerdown', event => {
     if (event.target.closest('button')) event.preventDefault();
   });
   el.panelTextFormats.addEventListener('click', event => {
-    const button = event.target.closest('button');
+    const button = event.target.closest('button[data-format]');
     if (button) applyPanelTextFormat(button.dataset.format);
   });
   el.panelTextFormats.addEventListener('focusin', updatePanelTextFormats);
   el.nodeEventTitle.addEventListener('input', changeNodeEvent);
   el.nodeEventAt.addEventListener('input', changeNodeEvent);
+  document.getElementById('nodeEventEndAt').addEventListener('input', changeNodeEvent);
+  document.getElementById('nodeEventKind').addEventListener('change', changeNodeEventKind);
+  document.getElementById('timelineMorePeriods').addEventListener('click', () => { periodsExpanded = !periodsExpanded; applyTimelineZoom(); });
   el.removeEventBtn.addEventListener('click', () => {
     const node = selected?.type === 'node' && selectedNodeIds.size === 1 ? getNode(selected.id) : null;
     if (!node || !node.eventAt) return;
-    pushHistory(); node.eventAt = '';
+    pushHistory(); node.eventAt = ''; node.eventEndAt = '';
     renderAll(); scheduleSave();
   });
   document.getElementById('addEventBtn').addEventListener('click', () => {
@@ -3017,7 +3740,6 @@
   window.addEventListener('resize', hideTimelinePreview);
   new ResizeObserver(() => applyTimelineZoom()).observe(el.timelineScroll);
   el.edgeLabel.addEventListener('input', onEdgeLabelInput);
-  el.nodeSize.addEventListener('change', () => changeNodeSize(el.nodeSize.value));
   el.chooseImageBtn.addEventListener('click', () => el.imageInput.click());
   el.imageInput.addEventListener('change', () => {
     readImageFile(el.imageInput.files[0]);
@@ -3027,6 +3749,325 @@
   document.addEventListener('keydown', onKeyDown);
   new ResizeObserver(() => applyView()).observe(el.canvas);
   window.addEventListener('beforeunload', saveLocal);
+
+  const fontSizeMenu = document.getElementById('fontSizeMenu');
+  let fontSizeTarget = null;
+  let fontSizeTrigger = null;
+
+  function normalizeRunFontSize(value) {
+    const size = Number(value);
+    return Number.isFinite(size) && size > 0 ? clamp(Math.round(size), 8, 72) : undefined;
+  }
+
+  function targetFontSizes(target) {
+    if (!target) return [];
+    const node = getNode(target.node.id);
+    if (!node) return [];
+    const chars = richCharacters(node).slice(target.start, target.end);
+    return [...new Set(chars.length ? chars.map(c => c.fontSize || normalizeFontSize(node.fontSize)) : [normalizeFontSize(node.fontSize)])];
+  }
+
+  function positionFontSizeMenu() {
+    if (!fontSizeTrigger || fontSizeMenu.hidden) return;
+    const rect = fontSizeTrigger.getBoundingClientRect();
+    fontSizeMenu.style.left = clamp(rect.left, 8, Math.max(8, innerWidth - fontSizeMenu.offsetWidth - 8)) + 'px';
+    fontSizeMenu.style.top = clamp(rect.bottom + fontSizeMenu.offsetHeight + 8 < innerHeight ? rect.bottom + 6 : rect.top - fontSizeMenu.offsetHeight - 6, 8, Math.max(8, innerHeight - fontSizeMenu.offsetHeight - 8)) + 'px';
+  }
+
+  function refreshFontSizeMenu(syncInput = false) {
+    if (!fontSizeTarget) return;
+    const sizes = targetFontSizes(fontSizeTarget);
+    const input = document.getElementById('fontSizeValue');
+    if (syncInput || document.activeElement !== input) input.value = sizes.length === 1 ? sizes[0] : '';
+    input.placeholder = 'Mixte';
+    document.getElementById('fontSizeScope').textContent = fontSizeTarget.source === 'node' ? 'Passage sélectionné' : 'Tout le texte de l’étiquette';
+    for (const button of fontSizeMenu.querySelectorAll('[data-size]')) button.setAttribute('aria-pressed', String(sizes.length === 1 && sizes[0] === Number(button.dataset.size)));
+    document.getElementById('fontSizeMinus').disabled = sizes.every(size => size <= 8);
+    document.getElementById('fontSizePlus').disabled = sizes.every(size => size >= 72);
+    positionFontSizeMenu();
+  }
+
+  function closeFontSizeMenu(restore = false) {
+    if (fontSizeMenu.hidden) return;
+    const target = fontSizeTarget, trigger = fontSizeTrigger;
+    const menuHadFocus = fontSizeMenu.contains(document.activeElement);
+    fontSizeMenu.hidden = true;
+    trigger?.setAttribute('aria-expanded', 'false');
+    fontSizeTarget = null; fontSizeTrigger = null;
+    if (restore && target?.source === 'node' && target.editor?.isConnected) {
+      target.editor.focus({ preventScroll: true });
+      restoreEditorSelection(target.editor, target);
+      refreshTextPopup();
+    } else if (restore && menuHadFocus) {
+      trigger?.focus({ preventScroll: true });
+    } else if (menuHadFocus && target?.editor?.isContentEditable) {
+      target.editor.contentEditable = 'false';
+      target.editor.classList.remove('editing');
+      formatPopup.hidden = true; textSelection = null;
+    }
+  }
+
+  function openFontSizeMenu(button) {
+    if (!fontSizeMenu.hidden && fontSizeTrigger === button) { closeFontSizeMenu(true); return; }
+    const target = button.closest('#textFormatPopup') ? textSelection : getPanelTextTarget();
+    if (!target) return;
+    closeFontSizeMenu();
+    fontSizeTarget = { ...target };
+    fontSizeTrigger = button;
+    fontSizeMenu.hidden = false;
+    button.setAttribute('aria-expanded', 'true');
+    refreshFontSizeMenu(true);
+  }
+
+  function applyFontSize(value, step = false) {
+    const target = fontSizeTarget;
+    const node = target && getNode(target.node.id);
+    if (!node || !Number.isFinite(Number(value))) return;
+    const chars = richCharacters(node), all = target.source !== 'node';
+    const start = all ? 0 : target.start, end = all ? chars.length : target.end;
+    const base = normalizeFontSize(node.fontSize);
+    const sized = c => normalizeRunFontSize(step ? (c.fontSize || base) + Number(value) : value);
+    const newBase = normalizeRunFontSize(step ? base + Number(value) : value);
+    if (!newBase || (!all && start === end)) return;
+    if (!chars.slice(start, end).some(c => (c.fontSize || base) !== sized(c)) && (!all || newBase === base)) return;
+    clearTimeout(textHistoryTimer); textHistoryTimer = null;
+    pushHistory();
+    chars.slice(start, end).forEach(c => { c.fontSize = sized(c); });
+    if (all) node.fontSize = newBase;
+    for (const c of chars) if (c.fontSize === normalizeFontSize(node.fontSize)) delete c.fontSize;
+    node.richText = mergeRichRuns(chars);
+    const editor = target.editor;
+    const range = target.source === 'node' ? target : editor?.isContentEditable ? getEditorSelection(editor) : null;
+    if (editor?.isConnected) {
+      paintRichText(editor, node);
+      if (range && editor.isContentEditable) restoreEditorSelection(editor, range);
+    }
+    el.nodeText.style.fontSize = normalizeFontSize(node.fontSize) + 'px';
+    renderEdges(); scheduleSave(); updatePanelTextFormats(); refreshFontSizeMenu(true);
+  }
+
+  function fitNodeToContent(button) {
+    const target = button.closest('#textFormatPopup') ? textSelection : getPanelTextTarget();
+    const node = target && getNode(target.node.id);
+    const dom = node && el.nodes.querySelector(`[data-node-id="${CSS.escape(node.id)}"]`);
+    if (!dom) return;
+    closeFontSizeMenu();
+    const copy = dom.cloneNode(true);
+    copy.removeAttribute('data-node-id'); copy.removeAttribute('id'); copy.removeAttribute('hidden');
+    copy.setAttribute('aria-hidden', 'true');
+    copy.classList.remove('selected', 'dimmed', 'related');
+    Object.assign(copy.style, { position: 'fixed', left: '0', top: '0', visibility: 'hidden', transform: 'none', width: 'max-content', minWidth: '170px', maxWidth: '640px', minHeight: '72px' });
+    copy.querySelectorAll('button').forEach(element => element.remove());
+    document.body.appendChild(copy);
+    const width = Math.ceil(copy.getBoundingClientRect().width);
+    copy.remove();
+    if (node.width === width && !node.height) return;
+    clearTimeout(textHistoryTimer); textHistoryTimer = null;
+    pushHistory(); node.width = width; node.height = null;
+    dom.style.width = width + 'px'; dom.style.minHeight = '';
+    renderEdges(); scheduleSave(); refreshTextPopup();
+  }
+
+  document.querySelectorAll('[data-text-size]').forEach(button => button.addEventListener('click', () => openFontSizeMenu(button)));
+  document.querySelectorAll('[data-fit-content]').forEach(button => button.addEventListener('click', () => fitNodeToContent(button)));
+  fontSizeMenu.addEventListener('pointerdown', event => { if (event.target.closest('button')) event.preventDefault(); });
+  fontSizeMenu.addEventListener('click', event => {
+    const button = event.target.closest('[data-size]');
+    if (button) { applyFontSize(Number(button.dataset.size)); closeFontSizeMenu(true); }
+  });
+  document.getElementById('fontSizeMinus').addEventListener('click', () => applyFontSize(-1, true));
+  document.getElementById('fontSizePlus').addEventListener('click', () => applyFontSize(1, true));
+  document.getElementById('fontSizeValue').addEventListener('change', event => {
+    if (event.target.value && event.target.validity.valid) applyFontSize(Number(event.target.value));
+  });
+  document.getElementById('fontSizeValue').addEventListener('keydown', event => {
+    if (event.key === 'Enter' && event.target.value && event.target.validity.valid) {
+      event.preventDefault(); applyFontSize(Number(event.target.value)); closeFontSizeMenu(true);
+    }
+  });
+  document.addEventListener('pointerdown', event => {
+    if (!event.target.closest('#fontSizeMenu, [data-text-size]')) closeFontSizeMenu();
+  }, true);
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && !fontSizeMenu.hidden) {
+      event.preventDefault(); event.stopImmediatePropagation(); closeFontSizeMenu(true);
+    }
+  }, true);
+  window.addEventListener('resize', () => closeFontSizeMenu());
+  document.addEventListener('scroll', event => { if (!fontSizeMenu.contains(event.target)) positionFontSizeMenu(); }, true);
+
+  function drawRichText(ctx, node, x, y, maxWidth) {
+    const chars = richCharacters(node.text ? node : { text: 'Étiquette vide' });
+    const base = normalizeFontSize(node.fontSize);
+    const font = c => `${c.italic ? 'italic ' : ''}${c.bold ? 700 : 400} ${c.fontSize || base}px "Segoe UI", Arial, sans-serif`;
+    const rows = []; let row = [], width = 0;
+    const newRow = () => { rows.push(row); row = []; width = 0; };
+    for (let i = 0; i < chars.length; i++) {
+      const c = chars[i];
+      if (c.text === '\n') { newRow(); continue; }
+      if (!/\s/.test(c.text) && (i === 0 || /\s/.test(chars[i - 1].text))) {
+        let wordWidth = 0;
+        for (let j = i; j < chars.length && !/\s/.test(chars[j].text); j++) {
+          ctx.font = font(chars[j]); wordWidth += ctx.measureText(chars[j].text).width;
+        }
+        if (width && wordWidth <= maxWidth && width + wordWidth > maxWidth) newRow();
+      }
+      ctx.font = font(c);
+      const w = ctx.measureText(c.text).width;
+      if (width && width + w > maxWidth) newRow();
+      row.push({ ...c, width: w }); width += w;
+    }
+    newRow();
+    let dy = 0;
+    for (const line of rows) {
+      const largest = Math.max(base, ...line.map(c => c.fontSize || base));
+      const lineHeight = largest * 1.36;
+      let dx = 0;
+      for (const c of line) {
+        const size = c.fontSize || base, top = y + dy + (largest - size) * .9;
+        ctx.font = font(c);
+        if (c.highlight) { ctx.fillStyle = '#fff176'; ctx.fillRect(x + dx, top, c.width, size * 1.36); }
+        ctx.fillStyle = node.text ? '#1d2733' : '#8a96a6';
+        ctx.fillText(c.text, x + dx, top);
+        if (c.underline) ctx.fillRect(x + dx, top + size * 1.08, c.width, Math.max(1, size / 14));
+        if (c.strike) ctx.fillRect(x + dx, top + size * .58, c.width, Math.max(1, size / 14));
+        dx += c.width;
+      }
+      dy += lineHeight;
+    }
+  }
+
+
+  // Each connected group has a central hub and concentric branches. Bounding
+  // circles reserve enough space for the actual label dimensions and handles.
+  function automaticLayout(nodes, edges, heights) {
+    if (!nodes.length) return new Map();
+    const byId = new Map(nodes.map(n => [n.id, n]));
+    const adjacent = new Map(nodes.map(n => [n.id, new Set()]));
+    for (const e of edges) if (e.source !== e.target && byId.has(e.source) && byId.has(e.target)) {
+      adjacent.get(e.source).add(e.target); adjacent.get(e.target).add(e.source);
+    }
+    const degree = id => adjacent.get(id).size;
+    const compare = (a, b) => degree(b) - degree(a) || a.localeCompare(b);
+    const unvisited = new Set(byId.keys()), components = [];
+    while (unvisited.size) {
+      const first = [...unvisited].sort(compare)[0], ids = [first]; unvisited.delete(first);
+      for (let i = 0; i < ids.length; i++) for (const next of adjacent.get(ids[i])) if (unvisited.delete(next)) ids.push(next);
+      components.push(ids.sort(compare));
+    }
+    components.sort((a, b) => b.length - a.length || compare(a[0], b[0]));
+    const groups = components.map(ids => {
+      const distanceSum = root => {
+        const depths = new Map([[root, 0]]), queue = [root];
+        for (let i = 0; i < queue.length; i++) for (const next of adjacent.get(queue[i])) if (!depths.has(next)) {
+          depths.set(next, depths.get(queue[i]) + 1); queue.push(next);
+        }
+        return [...depths.values()].reduce((a, b) => a + b, 0);
+      };
+      const candidates = ids.filter(id => degree(id) === degree(ids[0])).slice(0, 24);
+      const root = candidates.map(id => ({ id, distance: distanceSum(id) })).sort((a, b) => a.distance - b.distance || compare(a.id, b.id))[0].id;
+      const depth = new Map([[root, 0]]), parent = new Map(), children = new Map(ids.map(id => [id, []])), queue = [root];
+      for (let i = 0; i < queue.length; i++) for (const next of [...adjacent.get(queue[i])].sort(compare)) if (!depth.has(next)) {
+        depth.set(next, depth.get(queue[i]) + 1); parent.set(next, queue[i]); children.get(queue[i]).push(next); queue.push(next);
+      }
+      const weights = new Map();
+      for (const id of queue.slice().reverse()) weights.set(id, Math.max(1, children.get(id).reduce((sum, child) => sum + weights.get(child), 0)));
+      const desired = new Map([[root, -Math.PI / 2]]), sectors = new Map([[root, [-Math.PI / 2, Math.PI * 1.5]]]);
+      for (const id of queue) {
+        const [start, end] = sectors.get(id); let angle = start;
+        const total = children.get(id).reduce((sum, child) => sum + weights.get(child), 0);
+        for (const child of children.get(id)) {
+          const span = (end - start) * weights.get(child) / total;
+          desired.set(child, angle + span / 2); sectors.set(child, [angle, angle + span]); angle += span;
+        }
+      }
+      const radiusOf = id => Math.hypot(byId.get(id).width, heights.get(id) || 72) / 2 + 24;
+      const positions = new Map([[root, { x: 0, y: 0 }]]), angles = new Map([[root, -Math.PI / 2]]);
+      const lastInner = Math.max(0, ...ids.filter(id => degree(id) > 1).map(id => depth.get(id)));
+      const layers = new Map();
+      for (const id of ids) if (id !== root) {
+        const layer = degree(id) <= 1 ? Math.max(1, lastInner + 1) : depth.get(id);
+        if (!layers.has(layer)) layers.set(layer, []);
+        layers.get(layer).push(id);
+      }
+      let previousRadius = 0, previousSize = radiusOf(root);
+      for (const [, ring] of [...layers].sort((a, b) => a[0] - b[0])) {
+        ring.sort((a, b) => desired.get(a) - desired.get(b) || compare(a, b));
+        const largest = Math.max(...ring.map(radiusOf));
+        let radius = previousRadius + previousSize + largest + 32;
+        const arc = id => 2 * Math.asin(Math.min(.99, radiusOf(id) / radius));
+        while (ring.reduce((sum, id) => sum + arc(id), 0) > Math.PI * 2) radius *= 1.08;
+        const gap = (Math.PI * 2 - ring.reduce((sum, id) => sum + arc(id), 0)) / ring.length;
+        const rawAngles = new Map(); let angle = 0;
+        for (const id of ring) { const span = arc(id); rawAngles.set(id, angle + span / 2); angle += span + gap; }
+        let sx = 0, sy = 0;
+        for (const id of ring) {
+          const aim = parent.get(id) !== root && angles.has(parent.get(id)) ? angles.get(parent.get(id)) : desired.get(id);
+          sx += Math.cos(aim - rawAngles.get(id)); sy += Math.sin(aim - rawAngles.get(id));
+        }
+        const rotation = Math.atan2(sy, sx);
+        for (const id of ring) {
+          const a = rawAngles.get(id) + rotation; angles.set(id, a);
+          positions.set(id, { x: Math.cos(a) * radius, y: Math.sin(a) * radius });
+        }
+        previousRadius = radius; previousSize = largest;
+      }
+      // Tighten the circular construction using the real rectangular boxes.
+      // One common factor preserves branch angles and the central hub.
+      let compact = 0;
+      for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) {
+        const a = ids[i], b = ids[j], pa = positions.get(a), pb = positions.get(b);
+        const dx = Math.abs(pa.x - pb.x), dy = Math.abs(pa.y - pb.y);
+        const sx = dx > .001 ? ((byId.get(a).width + byId.get(b).width) / 2 + 44) / dx : Infinity;
+        const sy = dy > .001 ? (((heights.get(a) || 72) + (heights.get(b) || 72)) / 2 + 44) / dy : Infinity;
+        compact = Math.max(compact, Math.min(sx, sy));
+      }
+      compact = Math.min(1, compact || 1);
+      const boxes = ids.map(id => ({ id, x: positions.get(id).x * compact - byId.get(id).width / 2, y: positions.get(id).y * compact - (heights.get(id) || 72) / 2, width: byId.get(id).width, height: heights.get(id) || 72 }));
+      const left = Math.min(...boxes.map(b => b.x)), top = Math.min(...boxes.map(b => b.y));
+      return { boxes, left, top, width: Math.max(...boxes.map(b => b.x + b.width)) - left, height: Math.max(...boxes.map(b => b.y + b.height)) - top };
+    });
+    const shelfWidth = Math.max(...groups.map(g => g.width), Math.sqrt(groups.reduce((sum, g) => sum + (g.width + 110) * (g.height + 110), 0)) * 1.35);
+    let x = 0, y = 0, rowHeight = 0; const result = new Map();
+    for (const group of groups) {
+      if (x && x + group.width > shelfWidth) { x = 0; y += rowHeight + 110; rowHeight = 0; }
+      for (const box of group.boxes) result.set(box.id, { x: Math.round(x + box.x - group.left), y: Math.round(y + box.y - group.top) });
+      x += group.width + 110; rowHeight = Math.max(rowHeight, group.height);
+    }
+    return result;
+  }
+
+  async function autoArrangeMap() {
+    const button = document.getElementById('autoArrangeBtn');
+    if (state.nodes.length < 2 || button.hasAttribute('aria-busy')) return;
+    closeFontSizeMenu();
+    button.disabled = true; button.setAttribute('aria-busy', 'true');
+    try {
+      await new Promise(requestAnimationFrame);
+      await Promise.all([...el.nodes.querySelectorAll('.node-image')].map(img => img.decode().catch(() => {})));
+      const heights = new Map(state.nodes.map(node => {
+        const dom = el.nodes.querySelector(`[data-node-id="${CSS.escape(node.id)}"]`);
+        if (!dom) return [node.id, getNodeHeight(node)];
+        // Hidden exploration/branch nodes also need their real image and text
+        // height. Restore visibility synchronously, before the next paint.
+        const hidden = dom.hidden; dom.hidden = false;
+        const height = dom.offsetHeight; dom.hidden = hidden;
+        return [node.id, height];
+      }));
+      const positions = automaticLayout(state.nodes, state.edges, heights);
+      clearTimeout(textHistoryTimer); textHistoryTimer = null;
+      pushHistory();
+      explorationMode = false; explorationNodeId = null;
+      stopConnectMode(); selected = null; selectedNodeIds.clear();
+      for (const node of state.nodes) Object.assign(node, positions.get(node.id));
+      renderAll(); fitView(); scheduleSave();
+      showToast('Carte réorganisée · Ctrl+Z pour annuler.');
+    } finally {
+      button.removeAttribute('aria-busy'); updateButtons();
+    }
+  }
+  document.getElementById('autoArrangeBtn').addEventListener('click', autoArrangeMap);
+
 
   loadLocal();
   renderAll();
