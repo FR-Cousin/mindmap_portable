@@ -122,6 +122,10 @@
     .timeline-heading h2 { font-size: 13px; margin: 0; }
     .timeline-hint { color: var(--muted); font-size: 11px; }
     .timeline-heading button { white-space: nowrap; }
+    .timeline-periods-toggle { display: inline-flex; align-items: center; gap: 6px; padding: 5px 9px; }
+    .timeline-periods-toggle svg { width: 14px; height: 14px; }
+    .timeline-periods-toggle[aria-expanded="true"] { background: var(--accent-soft); color: var(--accent); border-color: #aebff1; }
+    .timeline-periods-toggle[aria-expanded="true"] svg { transform: rotate(180deg); }
     .timeline-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
     .timeline-zoom { display: flex; gap: 3px; align-items: center; }
     .timeline-zoom .panel-button { min-width: 34px; padding: 5px 7px; }
@@ -644,6 +648,7 @@
     .timeline-dot { justify-self: center; width: min(8px, var(--timeline-item-width, 178px)); height: min(8px, var(--timeline-item-width, 178px)); }
     .timeline-empty { position: absolute; bottom: 8px; left: 0; }
     .timeline-periods { position: relative; width: 100%; }
+    .timeline-periods[hidden] { display: none; }
     .timeline-period {
       position: absolute; height: 18px; padding: 0 9px; border: 1px solid rgba(87,108,143,.19);
       border-radius: 5px; color: #52627a; background: var(--period-color, #eaf0ff);
@@ -780,6 +785,9 @@
   <section class="timeline" aria-label="Frise chronologique">
     <div class="timeline-heading">
       <h2>Chronologie <span id="timelineCount"></span></h2>
+      <button type="button" class="panel-button timeline-periods-toggle" id="timelinePeriodsToggle" aria-controls="timelinePeriods" aria-expanded="false" aria-label="Afficher les périodes" title="Afficher les périodes" disabled>
+        <span>Périodes</span><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m5 7.5 5 5 5-5"/></svg>
+      </button>
       <span class="timeline-hint">Ordre chronologique · Espacement régulier · Survolez pour un aperçu, cliquez pour retrouver l’étiquette</span>
       <div class="timeline-actions">
         <div class="timeline-zoom" role="group" aria-label="Zoom de la chronologie">
@@ -793,7 +801,7 @@
     <div class="timeline-scroll" id="timelineScroll" tabindex="0" aria-label="Chronologie : molette sur les événements ou touches + et − pour zoomer, 0 pour tout voir. Faites défiler les périodes avec la molette.">
       <div class="timeline-content" id="timelineContent">
         <ol class="timeline-track" id="timelineTrack" aria-label="Événements ponctuels dans l’ordre chronologique"></ol>
-        <div class="timeline-periods" id="timelinePeriods" role="group" aria-label="Périodes sous la chronologie"></div>
+        <div class="timeline-periods" id="timelinePeriods" role="group" aria-label="Périodes sous la chronologie" hidden></div>
       </div>
     </div>
     <p class="timeline-periods-hint" id="timelinePeriodsHint" hidden>↕ Faites défiler les périodes pour toutes les voir · Ctrl + molette : zoom</p>
@@ -1087,6 +1095,7 @@
       view: { x: 0, y: 0, scale: 1 },
       timelineZoom: 1,
       timelineZoomMode: 'fit',
+      timelinePeriodsExpanded: false,
       updatedAt: new Date().toISOString()
     };
   }
@@ -1178,6 +1187,7 @@
       edges: safeEdges,
       timelineZoom: data.timelineZoomMode === 'fit' ? normalizeTimelineZoom(data.timelineZoom) : 1,
       timelineZoomMode: 'fit',
+      timelinePeriodsExpanded: data.timelinePeriodsExpanded === true,
       view: {
         x: Number.isFinite(Number(view.x)) ? Number(view.x) : 0,
         y: Number.isFinite(Number(view.y)) ? Number(view.y) : 0,
@@ -1635,7 +1645,20 @@
     const periods = nodes.filter(isPeriod);
     const periodTrack = document.getElementById('timelinePeriods');
     const hint = document.getElementById('timelinePeriodsHint');
-    if (!nodes.length) { periodTrack.style.height = '0px'; hint.hidden = true; el.timelineScroll.style.height = '116px'; return; }
+    const toggle = document.getElementById('timelinePeriodsToggle');
+    const expanded = periods.length > 0 && state.timelinePeriodsExpanded;
+    periodTrack.hidden = !expanded;
+    toggle.disabled = periods.length === 0;
+    toggle.setAttribute('aria-expanded', String(expanded));
+    toggle.title = !periods.length ? 'Aucune période à afficher' : expanded ? 'Masquer les périodes' : 'Afficher toutes les périodes';
+    toggle.setAttribute('aria-label', toggle.title);
+    if (!expanded) {
+      periodTrack.style.height = '0px';
+      hint.hidden = true;
+      el.timelineScroll.scrollTop = 0;
+      el.timelineScroll.style.height = '116px';
+    }
+    if (!nodes.length) return;
     const layout = timelineChronologicalLayout(nodes, width);
     const x = value => layout.dates.get(value);
     el.timelineTrack.style.setProperty('--timeline-inset', layout.inset + 'px');
@@ -1644,6 +1667,7 @@
       const item = el.timelineTrack.querySelector(`[data-node-id="${CSS.escape(node.id)}"]`)?.parentElement;
       if (item) { item.style.left = layout.events.get(node.id) + 'px'; item.style.width = layout.itemWidth + 'px'; }
     }
+    if (!expanded) return;
     const laneEnds = [];
     const placed = periods.slice().sort((a, b) => a.eventAt.localeCompare(b.eventAt) || b.eventEndAt.localeCompare(a.eventEndAt))
       .map(node => {
@@ -3748,6 +3772,12 @@
   el.timelineZoomOut.addEventListener('click', () => setTimelineZoom(normalizeTimelineZoom(state.timelineZoom) * .8));
   el.timelineZoomIn.addEventListener('click', () => setTimelineZoom(normalizeTimelineZoom(state.timelineZoom) * 1.25));
   el.timelineZoomReset.addEventListener('click', () => setTimelineZoom(1));
+  document.getElementById('timelinePeriodsToggle').addEventListener('click', () => {
+    state.timelinePeriodsExpanded = !state.timelinePeriodsExpanded;
+    el.timelineScroll.scrollTop = 0;
+    applyTimelineZoom();
+    scheduleSave();
+  });
   el.timelineScroll.closest('.timeline').addEventListener('wheel', event => {
     if (event.deltaY === 0) return;
     // Let the scroll container reveal every period; keep zoom on the event

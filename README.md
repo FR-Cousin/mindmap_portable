@@ -11,6 +11,9 @@ Ouvrir `MindMap_Portable.html` dans un navigateur. Aucune installation ni connex
   les étiquettes pour rendre leurs connexions plus lisibles.
 - Ajouter une date et une heure à une étiquette, ou cocher **Période** pour préciser
   une fin. Les périodes apparaissent sous la frise chronologique.
+  Le bouton **Périodes**, près du titre de la chronologie, affiche ou masque
+  toutes les périodes en gardant les événements visibles. Elles sont repliées
+  par défaut ; le choix d’affichage est conservé dans la sauvegarde de la carte.
   Toutes les périodes restent accessibles : lorsqu’elles sont nombreuses,
   faire défiler leur zone verticalement avec la molette. **Ctrl + molette** ou
   les boutons **+ / −** permettent de zoomer ; les événements restent visibles
