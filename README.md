@@ -11,6 +11,9 @@ Ouvrir `MindMap_Portable.html` dans un navigateur. Aucune installation ni connex
   les étiquettes pour rendre leurs connexions plus lisibles.
 - Ajouter une date et une heure à une étiquette, ou cocher **Période** pour préciser
   une fin. Les périodes apparaissent sous la frise chronologique.
+  Les repères sont espacés régulièrement dans l’ordre des dates pour éviter les
+  superpositions, y compris à date identique. Les distances sur la frise ne sont
+  pas proportionnelles aux durées ; les périodes restent alignées sur leurs dates.
 - Double-cliquer dans une étiquette et sélectionner du texte pour afficher la
   barre de mise en forme. Le bouton **Aa** propose des tailles et les commandes
   **+ / −** ; dans la colonne de propriétés, ces réglages concernent tout le texte.

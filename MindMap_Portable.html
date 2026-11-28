@@ -638,10 +638,10 @@
     .timeline-track { display: block; width: 100%; min-width: 0; height: 98px; }
     .timeline-track::before { left: var(--timeline-inset, 80px); right: var(--timeline-inset, 80px); }
     .timeline-track li:not(.timeline-empty) { position: absolute; top: 4px; height: 86px; transform: translateX(-50%); }
-    .timeline-event { padding: 0 3px; text-align: center; }
+    .timeline-event { padding: 0 min(3px, calc(var(--timeline-item-width, 178px) / 8)); text-align: center; }
     .timeline-event time { font-size: 11px; }
     .timeline-event strong { font-size: 12px; font-weight: 600; }
-    .timeline-dot { justify-self: center; width: 8px; height: 8px; }
+    .timeline-dot { justify-self: center; width: min(8px, var(--timeline-item-width, 178px)); height: min(8px, var(--timeline-item-width, 178px)); }
     .timeline-empty { position: absolute; bottom: 8px; left: 0; }
     .timeline-periods { position: relative; width: 100%; }
     .timeline-period {
@@ -781,7 +781,7 @@
   <section class="timeline" aria-label="Frise chronologique">
     <div class="timeline-heading">
       <h2>Chronologie <span id="timelineCount"></span></h2>
-      <span class="timeline-hint">Ordre chronologique · Survolez pour un aperçu, cliquez pour retrouver l’étiquette</span>
+      <span class="timeline-hint">Ordre chronologique · Espacement régulier · Survolez pour un aperçu, cliquez pour retrouver l’étiquette</span>
       <div class="timeline-actions">
         <div class="timeline-zoom" role="group" aria-label="Zoom de la chronologie">
           <button type="button" class="panel-button" id="timelineZoomOut" aria-label="Dézoomer la chronologie" title="Dézoomer la frise">−</button>
@@ -1601,24 +1601,50 @@
     hideTimelinePreview();
   }
 
+  function timelineChronologicalLayout(nodes, width) {
+    // The frieze shows chronological order, not elapsed time. Give every event
+    // its own slot so distant dates and simultaneous events cannot pile up.
+    // Period boundaries share the same axis, including dates with no event.
+    const eventsByDate = new Map();
+    for (const node of nodes) if (!isPeriod(node)) {
+      if (!eventsByDate.has(node.eventAt)) eventsByDate.set(node.eventAt, []);
+      eventsByDate.get(node.eventAt).push(node);
+    }
+    const dates = [...new Set(nodes.flatMap(node => isPeriod(node)
+      ? [node.eventAt, node.eventEndAt] : [node.eventAt]))].sort();
+    const eventSlots = new Map(), dateSlots = new Map();
+    let slots = 0;
+    for (const date of dates) {
+      const events = eventsByDate.get(date) || [];
+      const count = Math.max(1, events.length);
+      events.forEach((node, index) => eventSlots.set(node.id, slots + index));
+      dateSlots.set(date, slots + (count - 1) / 2);
+      slots += count;
+    }
+    const inset = Math.min(96, width / (2 * Math.max(1, slots)));
+    const step = slots > 1 ? (width - inset * 2) / (slots - 1) : width;
+    const position = slot => slots > 1 ? inset + slot * step : width / 2;
+    return {
+      inset,
+      itemWidth: Math.max(1, Math.min(178, step * .9)),
+      events: new Map([...eventSlots].map(([id, slot]) => [id, position(slot)])),
+      dates: new Map([...dateSlots].map(([date, slot]) => [date, position(slot)]))
+    };
+  }
+
   function layoutTimelinePeriods(width) {
     const nodes = timelineNodes(), instants = nodes.filter(node => !isPeriod(node));
     const periods = nodes.filter(isPeriod);
     const periodTrack = document.getElementById('timelinePeriods');
     const more = document.getElementById('timelineMorePeriods');
     if (!nodes.length) { periodTrack.style.height = '0px'; more.hidden = true; el.timelineScroll.style.height = '116px'; return; }
-    const stamp = value => new Date(value + ':00Z').getTime();
-    const dates = nodes.flatMap(node => isPeriod(node) ? [stamp(node.eventAt), stamp(node.eventEndAt)] : [stamp(node.eventAt)]);
-    const first = Math.min(...dates), last = Math.max(...dates);
-    const inset = Math.min(96, Math.max(26, width * .065));
-    const x = value => first === last ? width / 2 : inset + (stamp(value) - first) / (last - first) * (width - inset * 2);
-    el.timelineTrack.style.setProperty('--timeline-inset', inset + 'px');
-    for (let i = 0; i < instants.length; i++) {
-      const node = instants[i], left = x(node.eventAt);
-      const before = i ? left - x(instants[i - 1].eventAt) : inset * 2;
-      const after = i + 1 < instants.length ? x(instants[i + 1].eventAt) - left : inset * 2;
+    const layout = timelineChronologicalLayout(nodes, width);
+    const x = value => layout.dates.get(value);
+    el.timelineTrack.style.setProperty('--timeline-inset', layout.inset + 'px');
+    el.timelineTrack.style.setProperty('--timeline-item-width', layout.itemWidth + 'px');
+    for (const node of instants) {
       const item = el.timelineTrack.querySelector(`[data-node-id="${CSS.escape(node.id)}"]`)?.parentElement;
-      if (item) { item.style.left = left + 'px'; item.style.width = Math.max(34, Math.min(178, Math.min(before, after) * 1.8 - 8)) + 'px'; }
+      if (item) { item.style.left = layout.events.get(node.id) + 'px'; item.style.width = layout.itemWidth + 'px'; }
     }
     const laneEnds = [];
     const placed = periods.slice().sort((a, b) => a.eventAt.localeCompare(b.eventAt) || b.eventEndAt.localeCompare(a.eventEndAt))
