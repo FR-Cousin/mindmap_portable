@@ -126,8 +126,8 @@
     .timeline-zoom { display: flex; gap: 3px; align-items: center; }
     .timeline-zoom .panel-button { min-width: 34px; padding: 5px 7px; }
     #timelineZoomReset { width: 72px; padding-inline: 2px; font-size: 11px; font-variant-numeric: tabular-nums; }
-    /* Reserve a fixed height, including space for the horizontal scrollbar. */
-    .timeline-scroll { height: 116px; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; }
+    /* Keep room for the map; long period lists scroll below the event axis. */
+    .timeline-scroll { height: 116px; max-height: clamp(150px, 42dvh, 420px); overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; scroll-padding-top: 98px; scroll-padding-bottom: 6px; }
     .timeline-track { --timeline-zoom: 1; display: flex; position: relative; width: max-content; min-width: 100%; height: 98px; margin: 0; padding: 4px 0 8px; list-style: none; }
     .timeline-track::before { content: ''; position: absolute; left: 0; right: 0; top: 46px; height: 2px; background: #dbe4f4; }
     .timeline-track li { position: relative; min-width: 0; flex: 0 0 var(--timeline-item-width, 188px); width: var(--timeline-item-width, 188px); scroll-snap-align: start; }
@@ -635,7 +635,7 @@
     #timelineCount { margin-left: 7px; font-size: 11px; font-weight: 400; color: var(--muted); }
     .timeline-scroll { transition: height .16s ease; }
     .timeline-content { position: relative; min-width: 100%; }
-    .timeline-track { display: block; width: 100%; min-width: 0; height: 98px; }
+    .timeline-track { display: block; position: sticky; top: 0; z-index: 1; background: #fff; width: 100%; min-width: 0; height: 98px; }
     .timeline-track::before { left: var(--timeline-inset, 80px); right: var(--timeline-inset, 80px); }
     .timeline-track li:not(.timeline-empty) { position: absolute; top: 4px; height: 86px; transform: translateX(-50%); }
     .timeline-event { padding: 0 min(3px, calc(var(--timeline-item-width, 178px) / 8)); text-align: center; }
@@ -658,9 +658,8 @@
     .timeline-period:hover { border-color: #899ab6; box-shadow: 0 1px 4px rgba(34,48,68,.10); }
     .timeline-period[aria-current="true"] { border-color: #7089b4; box-shadow: 0 0 0 1px rgba(79,110,164,.17); color: #354d72; }
     .timeline-period:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-    .timeline-more-periods { margin: 0 0 4px 8px; padding: 2px 6px; border: 0; background: transparent; color: #667085; font: inherit; font-size: 11px; cursor: pointer; }
-    .timeline-more-periods:hover { color: var(--accent); }
-    .timeline-more-periods[hidden] { display: none; }
+    .timeline-periods-hint { margin: 0 0 5px; color: var(--muted); font-size: 11px; }
+    .timeline-periods-hint[hidden] { display: none; }
     .period-toggle { display: flex; align-items: center; gap: 7px; margin: -3px 0 15px; font-size: 12px; font-weight: 600; cursor: pointer; }
     #nodeEventKind { width: 15px; height: 15px; margin: 0; accent-color: var(--accent); }
     #nodeEventEndField[hidden] { display: none; }
@@ -791,13 +790,13 @@
         <button type="button" class="panel-button" id="addEventBtn">+ Événement</button>
       </div>
     </div>
-    <div class="timeline-scroll" id="timelineScroll" tabindex="0" aria-label="Événements : molette ou touches + et − pour zoomer, 0 pour tout voir">
+    <div class="timeline-scroll" id="timelineScroll" tabindex="0" aria-label="Chronologie : molette sur les événements ou touches + et − pour zoomer, 0 pour tout voir. Faites défiler les périodes avec la molette.">
       <div class="timeline-content" id="timelineContent">
         <ol class="timeline-track" id="timelineTrack" aria-label="Événements ponctuels dans l’ordre chronologique"></ol>
         <div class="timeline-periods" id="timelinePeriods" role="group" aria-label="Périodes sous la chronologie"></div>
-        <button type="button" class="timeline-more-periods" id="timelineMorePeriods" aria-expanded="false" hidden></button>
       </div>
     </div>
+    <p class="timeline-periods-hint" id="timelinePeriodsHint" hidden>↕ Faites défiler les périodes pour toutes les voir · Ctrl + molette : zoom</p>
   </section>
 
   <main class="workspace">
@@ -991,7 +990,6 @@
   'use strict';
 
   const STORAGE_KEY = 'mindmap-portable-v1';
-  let periodsExpanded = false;
   const NODE_COLORS = ['#ffffff', '#eaf0ff', '#e9f8ef', '#fff4d9', '#ffe9e7', '#f3ebff', '#e8f7fa', '#f3f4f6', '#fff0f6', '#ecf8df'];
   // Numerical safety only: the canvas has no fixed world dimensions.
   const MIN_ZOOM = 1e-12;
@@ -1636,8 +1634,8 @@
     const nodes = timelineNodes(), instants = nodes.filter(node => !isPeriod(node));
     const periods = nodes.filter(isPeriod);
     const periodTrack = document.getElementById('timelinePeriods');
-    const more = document.getElementById('timelineMorePeriods');
-    if (!nodes.length) { periodTrack.style.height = '0px'; more.hidden = true; el.timelineScroll.style.height = '116px'; return; }
+    const hint = document.getElementById('timelinePeriodsHint');
+    if (!nodes.length) { periodTrack.style.height = '0px'; hint.hidden = true; el.timelineScroll.style.height = '116px'; return; }
     const layout = timelineChronologicalLayout(nodes, width);
     const x = value => layout.dates.get(value);
     el.timelineTrack.style.setProperty('--timeline-inset', layout.inset + 'px');
@@ -1655,22 +1653,17 @@
         laneEnds[lane] = Math.max(right, left + 6);
         return { node, left, right, lane };
       });
-    let hidden = 0;
     for (const item of placed) {
       const button = periodTrack.querySelector(`[data-node-id="${CSS.escape(item.node.id)}"]`);
       if (!button) continue;
-      button.hidden = !periodsExpanded && item.lane >= 3;
-      if (button.hidden) hidden++;
       button.style.left = item.left + 'px'; button.style.top = item.lane * 24 + 'px';
       button.style.width = Math.max(6, item.right - item.left) + 'px';
       button.classList.toggle('short-period', item.right - item.left < 50);
     }
-    const lanes = periodsExpanded ? laneEnds.length : Math.min(3, laneEnds.length);
+    const lanes = laneEnds.length;
     periodTrack.style.height = (lanes ? lanes * 24 + 2 : 0) + 'px';
-    more.hidden = laneEnds.length <= 3;
-    more.textContent = periodsExpanded ? 'Réduire les périodes' : `+ ${hidden} période${hidden > 1 ? 's' : ''}`;
-    more.setAttribute('aria-expanded', String(periodsExpanded));
-    el.timelineScroll.style.height = (116 + (lanes ? lanes * 24 + 2 : 0) + (more.hidden ? 0 : 24)) + 'px';
+    el.timelineScroll.style.height = (116 + (lanes ? lanes * 24 + 2 : 0)) + 'px';
+    hint.hidden = !lanes || el.timelineScroll.scrollHeight <= el.timelineScroll.clientHeight + 1;
   }
 
   function bindTimelineEntry(button, node) {
@@ -3718,7 +3711,6 @@
   el.nodeEventAt.addEventListener('input', changeNodeEvent);
   document.getElementById('nodeEventEndAt').addEventListener('input', changeNodeEvent);
   document.getElementById('nodeEventKind').addEventListener('change', changeNodeEventKind);
-  document.getElementById('timelineMorePeriods').addEventListener('click', () => { periodsExpanded = !periodsExpanded; applyTimelineZoom(); });
   el.removeEventBtn.addEventListener('click', () => {
     const node = selected?.type === 'node' && selectedNodeIds.size === 1 ? getNode(selected.id) : null;
     if (!node || !node.eventAt) return;
@@ -3758,6 +3750,10 @@
   el.timelineZoomReset.addEventListener('click', () => setTimelineZoom(1));
   el.timelineScroll.closest('.timeline').addEventListener('wheel', event => {
     if (event.deltaY === 0) return;
+    // Let the scroll container reveal every period; keep zoom on the event
+    // axis, on Ctrl/Meta + wheel, and when the period list already fits.
+    if (event.target.closest('#timelinePeriods') && !event.ctrlKey && !event.metaKey
+      && el.timelineScroll.scrollHeight > el.timelineScroll.clientHeight + 1) return;
     event.preventDefault();
     event.stopPropagation();
     const delta = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? el.timelineScroll.clientHeight : 1);
